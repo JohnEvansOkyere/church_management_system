@@ -1,7 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --cms-ink: #0f172a;
+  --cms-muted: #475569;
+  --cms-border: #dbe3ef;
+  --cms-surface: #ffffff;
+  --cms-surface-soft: #f8fafc;
+  --cms-brand: #0f4f82;
+  --cms-brand-soft: #dceeff;
+  --cms-accent: #0b9a8b;
+}
+
 body {
-  @apply bg-slate-100 text-slate-900;
+  font-family: 'Manrope', sans-serif;
+  color: var(--cms-ink);
+  background:
+    radial-gradient(1200px 400px at 8% -10%, rgba(15, 79, 130, 0.14), transparent 70%),
+    radial-gradient(1000px 500px at 100% 0%, rgba(11, 154, 139, 0.1), transparent 60%),
+    linear-gradient(180deg, #f3f7fc 0%, #eef3f8 40%, #edf2f7 100%);
+  min-height: 100vh;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl bg-white/95 shadow-sm ring-1 ring-slate-200 backdrop-blur;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-brand-700 focus:ring-2 focus:ring-brand-100;
+  }
+
+  .btn-primary {
+    @apply rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-danger {
+    @apply rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700;
+  }
 }

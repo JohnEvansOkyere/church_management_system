@@ -29,39 +29,63 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-md rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-2xl font-bold text-brand-800">Sign in</h1>
-        <p className="mt-1 text-sm text-slate-600">Living Spring Church Management System</p>
+    <main className="flex min-h-screen items-center justify-center px-4 py-8">
+      <section className="grid w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-200 lg:grid-cols-2">
+        <div className="relative overflow-hidden bg-gradient-to-br from-brand-800 via-brand-700 to-cyan-700 p-8 text-white">
+          <div className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-white/10" />
+          <div className="absolute -bottom-20 right-8 h-56 w-56 rounded-full bg-white/10" />
 
-        <label className="mt-5 block text-sm font-medium text-slate-700">Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 outline-none ring-brand-700 focus:ring"
-        />
+          <p className="relative text-xs font-semibold uppercase tracking-[0.18em] text-white/80">Living Spring International Church</p>
+          <h1 className="relative mt-4 text-4xl font-extrabold leading-tight">Church operations platform built for speed and clarity.</h1>
+          <p className="relative mt-4 max-w-md text-sm text-white/90">
+            Manage members, track attendance, and coordinate church workflow from one secure dashboard.
+          </p>
 
-        <label className="mt-4 block text-sm font-medium text-slate-700">Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 outline-none ring-brand-700 focus:ring"
-        />
+          <div className="relative mt-8 grid gap-3 text-sm text-white/90">
+            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3">Realtime member visibility</div>
+            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3">Role-based access for church teams</div>
+            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3">Attendance and growth insights</div>
+          </div>
+        </div>
 
-        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+        <div className="p-8 lg:p-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Secure Sign In</p>
+          <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Welcome back</h2>
+          <p className="mt-2 text-sm text-slate-600">Use your assigned account to access the church dashboard.</p>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="mt-5 w-full rounded-md bg-brand-700 px-4 py-2 font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
-        >
-          {isSubmitting ? 'Signing in...' : 'Sign in'}
-        </button>
-      </form>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-slate-700">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="field"
+                placeholder="you@livingspring.org"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-slate-700">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="field"
+                placeholder="Enter your password"
+              />
+            </div>
+
+            {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">{error}</p> : null}
+
+            <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+              {isSubmitting ? 'Signing in...' : 'Sign in to dashboard'}
+            </button>
+          </form>
+        </div>
+      </section>
     </main>
   );
 }
