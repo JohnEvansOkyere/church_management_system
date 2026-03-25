@@ -5,18 +5,25 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
 import { useCreateMember, useMembers } from '../../hooks/useMembers';
+import { memberService } from '../../services/memberService';
 import { formatDate } from '../../utils/formatters';
+
+const PAGE_SIZE = 20;
 
 export default function MembersPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState({ first_name: '', last_name: '', phone: '', email: '' });
+  const [message, setMessage] = useState('');
 
-  const membersQuery = useMembers({ skip: 0, limit: 20, search: search || undefined, status: status || undefined });
+  const skip = (page - 1) * PAGE_SIZE;
+  const membersQuery = useMembers({ skip, limit: PAGE_SIZE, search: search || undefined, status: status || undefined });
   const createMutation = useCreateMember();
 
   const rows = membersQuery.data?.data ?? [];
   const total = membersQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const activeCount = rows.filter((row) => row.membership_status === 'active').length;
   const lowAttendanceCount = rows.filter((row) => row.low_attendance).length;
 
@@ -57,19 +64,44 @@ export default function MembersPage() {
 
   async function onCreateMember(event) {
     event.preventDefault();
+    setMessage('');
     await createMutation.mutateAsync(form);
     setForm({ first_name: '', last_name: '', phone: '', email: '' });
+    setMessage('Member created successfully.');
+  }
+
+  async function onExport() {
+    setMessage('');
+    const response = await memberService.exportCsv();
+    const blob = new Blob([response.data], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `members_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+    setMessage('CSV export downloaded.');
   }
 
   return (
     <section>
-      <PageHeader title="Members" subtitle="Run intake, maintain profiles, and track attendance risk signals." />
+      <PageHeader
+        title="Members"
+        subtitle="Run intake, maintain profiles, and track attendance risk signals."
+        action={
+          <button type="button" onClick={onExport} className="btn-primary">
+            Export CSV
+          </button>
+        }
+      />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Visible Members" value={total} helper="Current filtered list" />
         <StatCard label="Active" value={activeCount} helper="Membership status active" tone="good" />
         <StatCard label="Pastoral Follow-up" value={lowAttendanceCount} helper="Low attendance members" tone="warn" />
-        <StatCard label="Search Scope" value={search ? 'Filtered' : 'All'} helper="Name, phone, email" />
+        <StatCard label="Page" value={`${page}/${totalPages}`} helper={`${rows.length} records shown`} />
       </div>
 
       <div className="panel mb-6 p-4">
@@ -78,10 +110,20 @@ export default function MembersPage() {
           <input
             placeholder="Search by name, phone, email"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="field"
           />
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="field">
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            className="field"
+          >
             <option value="">All status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -93,6 +135,7 @@ export default function MembersPage() {
             onClick={() => {
               setSearch('');
               setStatus('');
+              setPage(1);
             }}
             className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
@@ -135,12 +178,36 @@ export default function MembersPage() {
             {createMutation.isPending ? 'Creating...' : 'Create Member'}
           </button>
         </div>
+        {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
       </form>
 
       {membersQuery.isLoading ? (
         <LoadingSpinner label="Loading members..." />
       ) : (
-        <DataTable columns={columns} rows={rows} emptyLabel="No members found" />
+        <>
+          <DataTable columns={columns} rows={rows} emptyLabel="No members found" />
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-slate-600">Showing {rows.length} of {total} members</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </section>
   );

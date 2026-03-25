@@ -1,16 +1,52 @@
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import DataTable from '../../components/shared/DataTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
 import { useMemberAttendanceHistory } from '../../hooks/useAttendance';
-import { useMember } from '../../hooks/useMembers';
+import { useDeleteMember, useMember, useUpdateMember, useUploadMemberPhoto } from '../../hooks/useMembers';
 import { formatDate } from '../../utils/formatters';
 
 export default function MemberProfilePage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const memberQuery = useMember(id);
   const attendanceQuery = useMemberAttendanceHistory(id);
+  const updateMutation = useUpdateMember();
+  const deleteMutation = useDeleteMember();
+  const uploadMutation = useUploadMemberPhoto();
+
+  const [form, setForm] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    gender: '',
+    marital_status: '',
+    occupation: '',
+    address: '',
+    membership_status: 'active',
+  });
+  const [message, setMessage] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  useEffect(() => {
+    const member = memberQuery.data?.data;
+    if (!member) return;
+
+    setForm({
+      first_name: member.first_name || '',
+      last_name: member.last_name || '',
+      phone: member.phone || '',
+      email: member.email || '',
+      gender: member.gender || '',
+      marital_status: member.marital_status || '',
+      occupation: member.occupation || '',
+      address: member.address || '',
+      membership_status: member.membership_status || 'active',
+    });
+  }, [memberQuery.data]);
 
   if (memberQuery.isLoading) {
     return <LoadingSpinner label="Loading member profile..." />;
@@ -44,11 +80,44 @@ export default function MemberProfilePage() {
     { key: 'notes', label: 'Notes' },
   ];
 
+  async function onSave(event) {
+    event.preventDefault();
+    setMessage('');
+
+    await updateMutation.mutateAsync({
+      id,
+      payload: {
+        ...form,
+        gender: form.gender || null,
+        marital_status: form.marital_status || null,
+        occupation: form.occupation || null,
+        address: form.address || null,
+      },
+    });
+    setMessage('Member profile updated successfully.');
+  }
+
+  async function onUploadPhoto() {
+    if (!selectedFile) return;
+    setMessage('');
+    await uploadMutation.mutateAsync({ id, file: selectedFile });
+    setSelectedFile(null);
+    setMessage('Member photo uploaded successfully.');
+  }
+
+  async function onDeactivate() {
+    const confirmed = window.confirm('Deactivate this member? This will set membership status to inactive.');
+    if (!confirmed) return;
+
+    await deleteMutation.mutateAsync(id);
+    navigate('/members');
+  }
+
   return (
     <section>
       <PageHeader
         title={`${member.first_name} ${member.last_name}`}
-        subtitle="Member profile and attendance performance overview."
+        subtitle="Manage profile details, photo, and membership status."
         action={
           <Link to="/members" className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             Back to members
@@ -64,16 +133,58 @@ export default function MemberProfilePage() {
       </div>
 
       <div className="panel mb-6 p-5">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Profile Details</p>
-        <div className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
-          <p><span className="font-semibold text-slate-700">Gender:</span> {member.gender || '-'}</p>
-          <p><span className="font-semibold text-slate-700">Date of birth:</span> {formatDate(member.date_of_birth)}</p>
-          <p><span className="font-semibold text-slate-700">Date joined:</span> {formatDate(member.date_joined)}</p>
-          <p><span className="font-semibold text-slate-700">Occupation:</span> {member.occupation || '-'}</p>
-          <p><span className="font-semibold text-slate-700">Marital status:</span> {member.marital_status || '-'}</p>
-          <p><span className="font-semibold text-slate-700">Address:</span> {member.address || '-'}</p>
+        <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Member Photo</p>
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="field" />
+          <button type="button" onClick={onUploadPhoto} disabled={!selectedFile || uploadMutation.isPending} className="btn-primary">
+            {uploadMutation.isPending ? 'Uploading...' : 'Upload Photo'}
+          </button>
         </div>
+        {member.photo_url ? (
+          <p className="mt-2 text-xs text-slate-500 break-all">Current photo URL: {member.photo_url}</p>
+        ) : null}
       </div>
+
+      <form onSubmit={onSave} className="panel mb-6 p-5">
+        <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Edit Profile</p>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <input className="field" value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} placeholder="First name" required />
+          <input className="field" value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} placeholder="Last name" required />
+          <input className="field" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} placeholder="Phone" />
+          <input className="field" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} placeholder="Email" />
+          <select className="field" value={form.gender} onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value }))}>
+            <option value="">Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+          <select className="field" value={form.marital_status} onChange={(e) => setForm((p) => ({ ...p, marital_status: e.target.value }))}>
+            <option value="">Marital status</option>
+            <option value="single">Single</option>
+            <option value="married">Married</option>
+            <option value="divorced">Divorced</option>
+            <option value="widowed">Widowed</option>
+          </select>
+          <input className="field" value={form.occupation} onChange={(e) => setForm((p) => ({ ...p, occupation: e.target.value }))} placeholder="Occupation" />
+          <select className="field" value={form.membership_status} onChange={(e) => setForm((p) => ({ ...p, membership_status: e.target.value }))}>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="visitor">Visitor</option>
+            <option value="new_convert">New convert</option>
+          </select>
+          <input className="field md:col-span-2 xl:col-span-1" value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} placeholder="Address" />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button type="submit" className="btn-primary" disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+          </button>
+          <button type="button" onClick={onDeactivate} className="btn-danger" disabled={deleteMutation.isPending}>
+            {deleteMutation.isPending ? 'Deactivating...' : 'Deactivate Member'}
+          </button>
+        </div>
+
+        {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
+      </form>
 
       {attendanceQuery.isLoading ? (
         <LoadingSpinner label="Loading attendance history..." />
