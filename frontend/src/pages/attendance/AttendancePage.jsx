@@ -1,17 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import DataTable from '../../components/shared/DataTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
-import { useAttendanceSessions, useAttendanceSummary, useCreateAttendanceSession } from '../../hooks/useAttendance';
+import { useAttendanceSession, useAttendanceSessions, useAttendanceSummary, useCreateAttendanceSession, useMarkAttendance } from '../../hooks/useAttendance';
+import { useMembers } from '../../hooks/useMembers';
 import { formatDate } from '../../utils/formatters';
 
 export default function AttendancePage() {
   const [form, setForm] = useState({ title: '', session_date: '', session_type: 'sunday_service', notes: '' });
+  const [selectedSessionId, setSelectedSessionId] = useState('');
+  const [statusMap, setStatusMap] = useState({});
 
   const sessionsQuery = useAttendanceSessions({ skip: 0, limit: 20 });
   const summaryQuery = useAttendanceSummary();
+  const membersQuery = useMembers({ skip: 0, limit: 50 });
+  const selectedSessionQuery = useAttendanceSession(selectedSessionId || null);
   const createMutation = useCreateAttendanceSession();
+  const markMutation = useMarkAttendance(selectedSessionId);
 
   const columns = useMemo(
     () => [
@@ -27,17 +33,41 @@ export default function AttendancePage() {
     []
   );
 
+  useEffect(() => {
+    const records = selectedSessionQuery.data?.data?.records ?? [];
+    if (!records.length) return;
+
+    const map = {};
+    records.forEach((record) => {
+      map[record.member_id] = record.status;
+    });
+    setStatusMap((prev) => ({ ...prev, ...map }));
+  }, [selectedSessionQuery.data]);
+
   async function onCreateSession(event) {
     event.preventDefault();
     await createMutation.mutateAsync(form);
     setForm({ title: '', session_date: '', session_type: 'sunday_service', notes: '' });
   }
 
+  async function onMarkAttendance(event) {
+    event.preventDefault();
+
+    const records = Object.entries(statusMap)
+      .filter(([, status]) => Boolean(status))
+      .map(([member_id, status]) => ({ member_id, status }));
+
+    if (!selectedSessionId || records.length === 0) return;
+    await markMutation.mutateAsync({ records });
+  }
+
   const summary = summaryQuery.data?.data;
+  const sessions = sessionsQuery.data?.data ?? [];
+  const members = membersQuery.data?.data ?? [];
 
   return (
     <section>
-      <PageHeader title="Attendance" subtitle="Create attendance sessions and monitor service participation trends." />
+      <PageHeader title="Attendance" subtitle="Create attendance sessions and mark member attendance in bulk." />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Total Members" value={summary?.total_members ?? '-'} helper="Current membership size" />
@@ -86,10 +116,69 @@ export default function AttendancePage() {
         </div>
       </form>
 
+      <form onSubmit={onMarkAttendance} className="panel mb-6 p-4">
+        <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Mark Attendance</p>
+
+        <div className="mb-4 grid gap-3 md:grid-cols-[2fr_1fr]">
+          <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} className="field">
+            <option value="">Select attendance session</option>
+            {sessions.map((session) => (
+              <option key={session.id} value={session.id}>
+                {session.title} - {formatDate(session.session_date)}
+              </option>
+            ))}
+          </select>
+          <button type="submit" disabled={!selectedSessionId || markMutation.isPending} className="btn-primary">
+            {markMutation.isPending ? 'Saving...' : 'Save Attendance'}
+          </button>
+        </div>
+
+        {!selectedSessionId ? (
+          <p className="text-sm text-slate-600">Choose a session to mark attendance for members.</p>
+        ) : membersQuery.isLoading || selectedSessionQuery.isLoading ? (
+          <LoadingSpinner label="Loading members and session records..." />
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="min-w-full bg-white text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-slate-600">Member</th>
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-slate-600">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {members.map((member) => (
+                  <tr key={member.id}>
+                    <td className="px-3 py-2 text-slate-700">{member.first_name} {member.last_name}</td>
+                    <td className="px-3 py-2">
+                      <select
+                        value={statusMap[member.id] || ''}
+                        onChange={(e) =>
+                          setStatusMap((prev) => ({
+                            ...prev,
+                            [member.id]: e.target.value,
+                          }))
+                        }
+                        className="field max-w-[180px]"
+                      >
+                        <option value="">Not set</option>
+                        <option value="present">Present</option>
+                        <option value="absent">Absent</option>
+                        <option value="excused">Excused</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </form>
+
       {sessionsQuery.isLoading ? (
         <LoadingSpinner label="Loading sessions..." />
       ) : (
-        <DataTable columns={columns} rows={sessionsQuery.data?.data ?? []} emptyLabel="No sessions found" />
+        <DataTable columns={columns} rows={sessions} emptyLabel="No sessions found" />
       )}
     </section>
   );

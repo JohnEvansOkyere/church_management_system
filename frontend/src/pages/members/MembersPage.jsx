@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import DataTable from '../../components/shared/DataTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
@@ -21,7 +22,15 @@ export default function MembersPage() {
 
   const columns = useMemo(
     () => [
-      { key: 'name', label: 'Member', render: (row) => `${row.first_name} ${row.last_name}` },
+      {
+        key: 'name',
+        label: 'Member',
+        render: (row) => (
+          <Link to={`/members/${row.id}`} className="font-semibold text-brand-700 hover:text-brand-800">
+            {row.first_name} {row.last_name}
+          </Link>
+        ),
+      },
       { key: 'phone', label: 'Phone' },
       { key: 'email', label: 'Email' },
       {
@@ -79,7 +88,14 @@ export default function MembersPage() {
             <option value="visitor">Visitor</option>
             <option value="new_convert">New convert</option>
           </select>
-          <button type="button" onClick={() => { setSearch(''); setStatus(''); }} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('');
+              setStatus('');
+            }}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
             Clear Filters
           </button>
         </div>

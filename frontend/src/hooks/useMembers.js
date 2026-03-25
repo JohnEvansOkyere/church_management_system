@@ -8,6 +8,14 @@ export function useMembers(params) {
   });
 }
 
+export function useMember(memberId) {
+  return useQuery({
+    queryKey: ['member', memberId],
+    queryFn: () => memberService.getById(memberId).then((r) => r.data),
+    enabled: Boolean(memberId),
+  });
+}
+
 export function useCreateMember() {
   const queryClient = useQueryClient();
 
