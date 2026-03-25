@@ -10,6 +10,7 @@ import DonationsPage from './pages/donations/DonationsPage';
 import EventsPage from './pages/events/EventsPage';
 import GroupsPage from './pages/groups/GroupsPage';
 import MemberProfilePage from './pages/members/MemberProfilePage';
+import MemberRegistrationPage from './pages/members/MemberRegistrationPage';
 import MembersPage from './pages/members/MembersPage';
 import ReportsPage from './pages/reports/ReportsPage';
 import { authService } from './services/authService';
@@ -81,6 +82,7 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="members" element={<MembersPage />} />
+            <Route path="members/register" element={<MemberRegistrationPage />} />
             <Route path="members/:id" element={<MemberProfilePage />} />
             <Route path="attendance" element={<AttendancePage />} />
             <Route path="donations" element={<DonationsPage />} />
