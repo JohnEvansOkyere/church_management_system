@@ -42,6 +42,12 @@ def create_member(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles("superadmin", "secretary")),
 ):
+    if payload.is_family_head and not payload.family_name and not payload.family_id:
+        raise HTTPException(
+            status_code=400,
+            detail="family_name or family_id is required when is_family_head is true",
+        )
+
     member = member_crud.create_member(db, payload)
     low_map = member_crud.build_low_attendance_map(db, [member.id])
     row = MemberResponse.model_validate(member).model_dump()

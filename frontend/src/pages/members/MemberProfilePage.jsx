@@ -6,6 +6,7 @@ import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
 import { useMemberAttendanceHistory } from '../../hooks/useAttendance';
 import { useDeleteMember, useMember, useUpdateMember, useUploadMemberPhoto } from '../../hooks/useMembers';
+import { GENDERS, MARITAL_STATUS, MEMBERSHIP_STATUS } from '../../utils/constants';
 import { formatDate } from '../../utils/formatters';
 import { resolvePhotoUrl } from '../../utils/media';
 
@@ -21,13 +22,20 @@ export default function MemberProfilePage() {
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
+    other_name: '',
     phone: '',
     email: '',
     gender: '',
+    date_of_birth: '',
     marital_status: '',
     occupation: '',
     address: '',
     membership_status: 'active',
+    date_joined: '',
+    baptism_date: '',
+    membership_class_completed: false,
+    is_family_head: false,
+    family_id: '',
   });
   const [message, setMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -39,13 +47,20 @@ export default function MemberProfilePage() {
     setForm({
       first_name: member.first_name || '',
       last_name: member.last_name || '',
+      other_name: member.other_name || '',
       phone: member.phone || '',
       email: member.email || '',
       gender: member.gender || '',
+      date_of_birth: member.date_of_birth || '',
       marital_status: member.marital_status || '',
       occupation: member.occupation || '',
       address: member.address || '',
       membership_status: member.membership_status || 'active',
+      date_joined: member.date_joined || '',
+      baptism_date: member.baptism_date || '',
+      membership_class_completed: Boolean(member.membership_class_completed),
+      is_family_head: Boolean(member.is_family_head),
+      family_id: member.family_id || '',
     });
   }, [memberQuery.data]);
 
@@ -89,10 +104,17 @@ export default function MemberProfilePage() {
       id,
       payload: {
         ...form,
+        other_name: form.other_name || null,
+        phone: form.phone || null,
+        email: form.email || null,
         gender: form.gender || null,
+        date_of_birth: form.date_of_birth || null,
         marital_status: form.marital_status || null,
         occupation: form.occupation || null,
         address: form.address || null,
+        date_joined: form.date_joined || null,
+        baptism_date: form.baptism_date || null,
+        family_id: form.family_id || null,
       },
     });
     setMessage('Member profile updated successfully.');
@@ -118,7 +140,7 @@ export default function MemberProfilePage() {
     <section>
       <PageHeader
         title={`${member.first_name} ${member.last_name}`}
-        subtitle="Manage profile details, photo, and membership status."
+        subtitle="Manage profile details, family linkage, photo, and membership status."
         action={
           <Link to="/members" className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             Back to members
@@ -129,8 +151,8 @@ export default function MemberProfilePage() {
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Membership Status" value={member.membership_status || '-'} />
         <StatCard label="Attendance Rate" value={`${attendancePercentage}%`} tone={attendancePercentage >= 50 ? 'good' : 'warn'} />
-        <StatCard label="Phone" value={member.phone || '-'} />
-        <StatCard label="Email" value={member.email || '-'} />
+        <StatCard label="Family ID" value={member.family_id ? 'Linked' : 'Not linked'} />
+        <StatCard label="Class Completed" value={member.membership_class_completed ? 'Yes' : 'No'} />
       </div>
 
       <div className="panel mb-6 p-5">
@@ -163,31 +185,61 @@ export default function MemberProfilePage() {
 
       <form onSubmit={onSave} className="panel mb-6 p-5">
         <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Edit Profile</p>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <input className="field" value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} placeholder="First name" required />
           <input className="field" value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} placeholder="Last name" required />
+          <input className="field" value={form.other_name} onChange={(e) => setForm((p) => ({ ...p, other_name: e.target.value }))} placeholder="Other name" />
           <input className="field" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} placeholder="Phone" />
           <input className="field" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} placeholder="Email" />
+
           <select className="field" value={form.gender} onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value }))}>
             <option value="">Gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
+            {GENDERS.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
           </select>
+
+          <input className="field" type="date" value={form.date_of_birth} onChange={(e) => setForm((p) => ({ ...p, date_of_birth: e.target.value }))} />
+
           <select className="field" value={form.marital_status} onChange={(e) => setForm((p) => ({ ...p, marital_status: e.target.value }))}>
             <option value="">Marital status</option>
-            <option value="single">Single</option>
-            <option value="married">Married</option>
-            <option value="divorced">Divorced</option>
-            <option value="widowed">Widowed</option>
+            {MARITAL_STATUS.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
           </select>
+
           <input className="field" value={form.occupation} onChange={(e) => setForm((p) => ({ ...p, occupation: e.target.value }))} placeholder="Occupation" />
+
           <select className="field" value={form.membership_status} onChange={(e) => setForm((p) => ({ ...p, membership_status: e.target.value }))}>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="visitor">Visitor</option>
-            <option value="new_convert">New convert</option>
+            {MEMBERSHIP_STATUS.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
           </select>
-          <input className="field md:col-span-2 xl:col-span-1" value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} placeholder="Address" />
+
+          <input className="field" type="date" value={form.date_joined} onChange={(e) => setForm((p) => ({ ...p, date_joined: e.target.value }))} />
+          <input className="field" type="date" value={form.baptism_date} onChange={(e) => setForm((p) => ({ ...p, baptism_date: e.target.value }))} />
+          <input className="field" value={form.family_id} onChange={(e) => setForm((p) => ({ ...p, family_id: e.target.value }))} placeholder="Family ID (UUID)" />
+          <input className="field md:col-span-2 xl:col-span-4" value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} placeholder="Address" />
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.membership_class_completed}
+              onChange={(e) => setForm((p) => ({ ...p, membership_class_completed: e.target.checked }))}
+            />
+            Membership class completed
+          </label>
+
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.is_family_head}
+              onChange={(e) => setForm((p) => ({ ...p, is_family_head: e.target.checked }))}
+            />
+            Is family head
+          </label>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3">
