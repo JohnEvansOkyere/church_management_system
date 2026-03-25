@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
-import { useAuthStore } from '../../store/authStore';
+import TrendBars from '../../components/shared/TrendBars';
+import { useAttendanceMonthlyReport, useDashboardReport, useMembersGrowthReport } from '../../hooks/useReports';
 
 const quickActions = [
   {
@@ -12,47 +14,62 @@ const quickActions = [
   },
   {
     title: 'Attendance Desk',
-    detail: 'Create service sessions and monitor turnout.',
+    detail: 'Run quick service check-in and session tracking.',
     to: '/attendance',
     cta: 'Open Attendance',
   },
   {
-    title: 'Financial Center',
-    detail: 'Prepare for donation and reporting workflows.',
+    title: 'Finance Center',
+    detail: 'Donations and finance reports are the next rollout.',
     to: '/donations',
     cta: 'Open Donations',
   },
 ];
 
 export default function DashboardPage() {
-  const { user } = useAuthStore();
+  const dashboardQuery = useDashboardReport();
+  const attendanceTrendQuery = useAttendanceMonthlyReport();
+  const membersTrendQuery = useMembersGrowthReport();
+
+  if (dashboardQuery.isLoading) {
+    return <LoadingSpinner label="Loading dashboard metrics..." />;
+  }
+
+  const metrics = dashboardQuery.data?.data ?? {};
+  const attendanceTrend = attendanceTrendQuery.data?.data ?? [];
+  const membersTrend = membersTrendQuery.data?.data ?? [];
 
   return (
     <section>
-      <PageHeader title="Dashboard" subtitle="Operational command center for church admin and ministry teams." />
+      <PageHeader title="Dashboard" subtitle="Live operational performance across members and attendance." />
 
       <div className="panel mb-6 overflow-hidden p-6">
         <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-700">Welcome</p>
-            <h2 className="mt-2 text-3xl font-extrabold text-slate-900">{user?.role ? `${user.role} workspace ready.` : 'Workspace ready.'}</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-700">Live Snapshot</p>
+            <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Church operations at a glance</h2>
             <p className="mt-3 max-w-2xl text-sm text-slate-600">
-              Members and attendance modules are production-ready. Use this area to drive daily operational execution while other modules are being rolled out.
+              Metrics update from your backend reports endpoints. Attendance and member growth trends are shown below.
             </p>
           </div>
           <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-cyan-700 p-5 text-white">
-            <p className="text-xs uppercase tracking-[0.16em] text-white/80">Current Focus</p>
-            <p className="mt-2 text-2xl font-extrabold">Member Growth + Attendance Discipline</p>
-            <p className="mt-3 text-sm text-white/90">Keep data updated weekly to maintain accurate follow-up and planning.</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-white/80">Current Attendance</p>
+            <p className="mt-2 text-3xl font-extrabold">{metrics.attendance_percentage ?? 0}%</p>
+            <p className="mt-3 text-sm text-white/90">{metrics.attendance_last_sunday ?? 0} present in latest tracked service.</p>
           </div>
         </div>
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Current Role" value={user?.role ?? '-'} helper="Role-based permissions active" />
-        <StatCard label="Members Module" value="Live" helper="Create, list, update, export" tone="good" />
-        <StatCard label="Attendance Module" value="Live" helper="Sessions, summary, tracking" tone="good" />
-        <StatCard label="Next Priority" value="Donations" helper="Implementation queued" tone="warn" />
+        <StatCard label="Total Members" value={metrics.total_members ?? 0} helper="All member records" />
+        <StatCard label="New This Month" value={metrics.new_members_this_month ?? 0} helper="Joined this month" tone="good" />
+        <StatCard label="Low Attendance" value={metrics.low_attendance_members ?? 0} helper="Needs follow-up" tone="warn" />
+        <StatCard label="Upcoming Events" value={metrics.upcoming_events ?? 0} helper="Event module pending" />
+      </div>
+
+      <div className="mb-6 grid gap-4 xl:grid-cols-2">
+        <TrendBars title="Monthly Attendance (Present)" data={attendanceTrend} color="bg-brand-700" />
+        <TrendBars title="Member Growth (Cumulative)" data={membersTrend} color="bg-emerald-600" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

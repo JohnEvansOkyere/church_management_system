@@ -1,0 +1,23 @@
+import { useQuery } from '@tanstack/react-query';
+import { reportsService } from '../services/reportsService';
+
+export function useDashboardReport() {
+  return useQuery({
+    queryKey: ['reports-dashboard'],
+    queryFn: () => reportsService.getDashboard().then((r) => r.data),
+  });
+}
+
+export function useAttendanceMonthlyReport() {
+  return useQuery({
+    queryKey: ['reports-attendance-monthly'],
+    queryFn: () => reportsService.getAttendanceMonthly().then((r) => r.data),
+  });
+}
+
+export function useMembersGrowthReport() {
+  return useQuery({
+    queryKey: ['reports-members-growth'],
+    queryFn: () => reportsService.getMembersGrowth().then((r) => r.data),
+  });
+}
