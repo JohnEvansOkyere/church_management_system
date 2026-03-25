@@ -1,9 +1,9 @@
 import api from './api';
 
 export const memberService = {
-  getAll: (params) => api.get('/members', { params }),
+  getAll: (params) => api.get('/members/', { params }),
   getById: (id) => api.get(`/members/${id}`),
-  create: (payload) => api.post('/members', payload),
+  create: (payload) => api.post('/members/', payload),
   update: (id, payload) => api.put(`/members/${id}`, payload),
   remove: (id) => api.delete(`/members/${id}`),
   uploadPhoto: (id, file) => {

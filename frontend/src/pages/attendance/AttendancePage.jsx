@@ -34,7 +34,7 @@ export default function AttendancePage() {
 
   const sessionsQuery = useAttendanceSessions({ skip: 0, limit: 20 });
   const summaryQuery = useAttendanceSummary();
-  const membersQuery = useMembers({ skip: 0, limit: 500 });
+  const membersQuery = useMembers({ skip: 0, limit: 100 });
   const selectedSessionQuery = useAttendanceSession(selectedSessionId || null);
   const createMutation = useCreateAttendanceSession();
   const markMutation = useMarkAttendance(selectedSessionId);
