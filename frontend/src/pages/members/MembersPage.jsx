@@ -91,6 +91,7 @@ export default function MembersPage() {
           )
         ),
       },
+      { key: 'date_of_birth', label: 'Date of Birth', render: (row) => formatDate(row.date_of_birth) },
       { key: 'date_joined', label: 'Date Joined', render: (row) => formatDate(row.date_joined) },
       {
         key: 'low_attendance',

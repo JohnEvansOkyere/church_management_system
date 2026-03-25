@@ -17,7 +17,6 @@ const initialForm = {
   marital_status: '',
   membership_status: 'active',
   date_joined: '',
-  baptism_date: '',
   membership_class_completed: false,
   is_family_head: false,
   family_name: '',
@@ -45,7 +44,6 @@ export default function MemberRegistrationPage() {
       occupation: form.occupation || null,
       marital_status: form.marital_status || null,
       date_joined: form.date_joined || null,
-      baptism_date: form.baptism_date || null,
       family_name: form.family_name || null,
       family_id: form.family_id || null,
     };
@@ -100,7 +98,6 @@ export default function MemberRegistrationPage() {
           </select>
 
           <input type="date" value={form.date_joined} onChange={(e) => setForm((p) => ({ ...p, date_joined: e.target.value }))} className="field" />
-          <input type="date" value={form.baptism_date} onChange={(e) => setForm((p) => ({ ...p, baptism_date: e.target.value }))} className="field" />
 
           <input placeholder="Family name (for new family head)" value={form.family_name} onChange={(e) => setForm((p) => ({ ...p, family_name: e.target.value }))} className="field" />
           <input placeholder="Family ID (existing family UUID)" value={form.family_id} onChange={(e) => setForm((p) => ({ ...p, family_id: e.target.value }))} className="field" />
