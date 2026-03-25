@@ -1,6 +1,8 @@
-from uuid import UUID
+from pathlib import Path
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -132,7 +134,21 @@ def upload_member_photo(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    photo_url = f"uploaded://{member_id}/{file.filename}"
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image uploads are allowed")
+
+    uploads_dir = Path("uploads/members")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    extension = Path(file.filename or "").suffix.lower() or ".jpg"
+    safe_filename = f"{member_id}_{uuid4().hex}{extension}"
+    file_path = uploads_dir / safe_filename
+
+    file_bytes = file.file.read()
+    with open(file_path, "wb") as output:
+        output.write(file_bytes)
+
+    photo_url = f"/uploads/members/{safe_filename}"
     updated = member_crud.update_member(db, member_id, MemberUpdate(photo_url=photo_url))
     row = MemberResponse.model_validate(updated).model_dump()
     row["low_attendance"] = member_crud.build_low_attendance_map(db, [member_id]).get(member_id, False)

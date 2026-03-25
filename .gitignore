@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 
 backend/.env
+backend/uploads/
 frontend/.env
 frontend/.env.local
 

@@ -7,6 +7,7 @@ import StatCard from '../../components/shared/StatCard';
 import { useCreateMember, useMembers } from '../../hooks/useMembers';
 import { memberService } from '../../services/memberService';
 import { formatDate } from '../../utils/formatters';
+import { resolvePhotoUrl } from '../../utils/media';
 
 const PAGE_SIZE = 20;
 
@@ -33,9 +34,23 @@ export default function MembersPage() {
         key: 'name',
         label: 'Member',
         render: (row) => (
-          <Link to={`/members/${row.id}`} className="font-semibold text-brand-700 hover:text-brand-800">
-            {row.first_name} {row.last_name}
-          </Link>
+          <div className="flex items-center gap-3">
+            {row.photo_url ? (
+              <img
+                src={resolvePhotoUrl(row.photo_url)}
+                alt={`${row.first_name} ${row.last_name}`}
+                className="h-10 w-10 rounded-full object-cover ring-1 ring-slate-200"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">
+                {(row.first_name?.[0] || '')}
+                {(row.last_name?.[0] || '')}
+              </div>
+            )}
+            <Link to={`/members/${row.id}`} className="font-semibold text-brand-700 hover:text-brand-800">
+              {row.first_name} {row.last_name}
+            </Link>
+          </div>
         ),
       },
       { key: 'phone', label: 'Phone' },

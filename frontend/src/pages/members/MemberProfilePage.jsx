@@ -7,6 +7,7 @@ import StatCard from '../../components/shared/StatCard';
 import { useMemberAttendanceHistory } from '../../hooks/useAttendance';
 import { useDeleteMember, useMember, useUpdateMember, useUploadMemberPhoto } from '../../hooks/useMembers';
 import { formatDate } from '../../utils/formatters';
+import { resolvePhotoUrl } from '../../utils/media';
 
 export default function MemberProfilePage() {
   const { id } = useParams();
@@ -134,15 +135,30 @@ export default function MemberProfilePage() {
 
       <div className="panel mb-6 p-5">
         <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Member Photo</p>
+        <div className="mb-3 flex items-center gap-3">
+          {member.photo_url ? (
+            <img
+              src={resolvePhotoUrl(member.photo_url)}
+              alt={`${member.first_name} ${member.last_name}`}
+              className="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200"
+            />
+          ) : (
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand-100 text-xl font-bold text-brand-800">
+              {(member.first_name?.[0] || '')}
+              {(member.last_name?.[0] || '')}
+            </div>
+          )}
+          <div>
+            <p className="text-sm font-semibold text-slate-700">Profile photo</p>
+            <p className="text-xs text-slate-500">Upload a clear headshot for quick identification.</p>
+          </div>
+        </div>
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="field" />
           <button type="button" onClick={onUploadPhoto} disabled={!selectedFile || uploadMutation.isPending} className="btn-primary">
             {uploadMutation.isPending ? 'Uploading...' : 'Upload Photo'}
           </button>
         </div>
-        {member.photo_url ? (
-          <p className="mt-2 text-xs text-slate-500 break-all">Current photo URL: {member.photo_url}</p>
-        ) : null}
       </div>
 
       <form onSubmit={onSave} className="panel mb-6 p-5">
