@@ -1,3 +1,3 @@
-from app.crud import attendance, auth, member, reports
+from app.crud import attendance, auth, donation, member, reports
 
-__all__ = ["member", "attendance", "auth", "reports"]
+__all__ = ["member", "attendance", "auth", "reports", "donation"]

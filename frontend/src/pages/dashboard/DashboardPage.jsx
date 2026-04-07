@@ -3,7 +3,7 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
 import TrendBars from '../../components/shared/TrendBars';
-import { useAttendanceMonthlyReport, useDashboardReport, useMembersGrowthReport } from '../../hooks/useReports';
+import { useAttendanceMonthlyReport, useDashboardReport, useDonationsMonthlyReport, useMembersGrowthReport } from '../../hooks/useReports';
 
 const quickActions = [
   {
@@ -20,7 +20,7 @@ const quickActions = [
   },
   {
     title: 'Finance Center',
-    detail: 'Donations and finance reports are the next rollout.',
+    detail: 'Record giving and review fund totals.',
     to: '/donations',
     cta: 'Open Donations',
   },
@@ -29,6 +29,7 @@ const quickActions = [
 export default function DashboardPage() {
   const dashboardQuery = useDashboardReport();
   const attendanceTrendQuery = useAttendanceMonthlyReport();
+  const donationsTrendQuery = useDonationsMonthlyReport();
   const membersTrendQuery = useMembersGrowthReport();
 
   if (dashboardQuery.isLoading) {
@@ -37,6 +38,7 @@ export default function DashboardPage() {
 
   const metrics = dashboardQuery.data?.data ?? {};
   const attendanceTrend = attendanceTrendQuery.data?.data ?? [];
+  const donationsTrend = donationsTrendQuery.data?.data ?? [];
   const membersTrend = membersTrendQuery.data?.data ?? [];
 
   return (
@@ -64,11 +66,12 @@ export default function DashboardPage() {
         <StatCard label="Total Members" value={metrics.total_members ?? 0} helper="All member records" />
         <StatCard label="New This Month" value={metrics.new_members_this_month ?? 0} helper="Joined this month" tone="good" />
         <StatCard label="Low Attendance" value={metrics.low_attendance_members ?? 0} helper="Needs follow-up" tone="warn" />
-        <StatCard label="Upcoming Events" value={metrics.upcoming_events ?? 0} helper="Event module pending" />
+        <StatCard label="Donations This Month" value={new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(metrics.donations_this_month ?? 0)} helper="Current month giving" tone="good" />
       </div>
 
-      <div className="mb-6 grid gap-4 xl:grid-cols-2">
+      <div className="mb-6 grid gap-4 xl:grid-cols-3">
         <TrendBars title="Monthly Attendance (Present)" data={attendanceTrend} color="bg-brand-700" />
+        <TrendBars title="Monthly Donations" data={donationsTrend} color="bg-cyan-700" />
         <TrendBars title="Member Growth (Cumulative)" data={membersTrend} color="bg-emerald-600" />
       </div>
 

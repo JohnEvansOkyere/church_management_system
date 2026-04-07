@@ -1,10 +1,11 @@
 from calendar import month_abbr
 from datetime import date, timedelta
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, extract, func
 from sqlalchemy.orm import Session
 
 from app.models.attendance import AttendanceRecord, AttendanceSession
+from app.models.donation import Donation
 from app.models.member import Member
 
 
@@ -79,13 +80,29 @@ def get_dashboard_stats(db: Session) -> dict:
 
     attendance_percentage = round((present_last_sunday / total_members) * 100, 2) if total_members else 0
 
+    donations_this_month = (
+        db.query(func.coalesce(func.sum(Donation.amount), 0))
+        .filter(
+            extract("year", Donation.donation_date) == today.year,
+            extract("month", Donation.donation_date) == today.month,
+        )
+        .scalar()
+        or 0
+    )
+    donations_this_year = (
+        db.query(func.coalesce(func.sum(Donation.amount), 0))
+        .filter(extract("year", Donation.donation_date) == today.year)
+        .scalar()
+        or 0
+    )
+
     return {
         "total_members": total_members,
         "new_members_this_month": new_members_this_month,
         "attendance_last_sunday": present_last_sunday,
         "attendance_percentage": attendance_percentage,
-        "donations_this_month": 0.0,
-        "donations_this_year": 0.0,
+        "donations_this_month": float(donations_this_month),
+        "donations_this_year": float(donations_this_year),
         "low_attendance_members": _low_attendance_count(db),
         "upcoming_events": 0,
     }
@@ -139,4 +156,27 @@ def get_members_growth(db: Session, months: int = 6) -> list[dict]:
         running_total += added
         data.append({"month": _month_label(month_start), "value": int(running_total)})
 
+    return data
+
+
+def get_donations_monthly(db: Session, months: int = 6) -> list[dict]:
+    today = date.today()
+    start = _add_months(_month_start(today), -(months - 1))
+
+    rows = (
+        db.query(
+            func.date_trunc("month", Donation.donation_date).label("month"),
+            func.coalesce(func.sum(Donation.amount), 0).label("total_amount"),
+        )
+        .filter(Donation.donation_date >= start)
+        .group_by(func.date_trunc("month", Donation.donation_date))
+        .all()
+    )
+
+    row_map = {date(r.month.year, r.month.month, 1): float(r.total_amount) for r in rows}
+
+    data = []
+    for i in range(months):
+        month = _add_months(start, i)
+        data.append({"month": _month_label(month), "value": row_map.get(month, 0)})
     return data

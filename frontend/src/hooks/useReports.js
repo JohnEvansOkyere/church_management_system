@@ -15,6 +15,15 @@ export function useAttendanceMonthlyReport() {
   });
 }
 
+
+export function useDonationsMonthlyReport() {
+  return useQuery({
+    queryKey: ['reports-donations-monthly'],
+    queryFn: () => reportsService.getDonationsMonthly().then((r) => r.data),
+  });
+}
+
+
 export function useMembersGrowthReport() {
   return useQuery({
     queryKey: ['reports-members-growth'],

@@ -1,3 +1,3 @@
-from app.schemas import attendance, auth, member
+from app.schemas import attendance, auth, donation, member
 
-__all__ = ["member", "attendance", "auth"]
+__all__ = ["member", "attendance", "auth", "donation"]

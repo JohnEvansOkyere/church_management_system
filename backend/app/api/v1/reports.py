@@ -22,7 +22,7 @@ def attendance_monthly(db: Session = Depends(get_db), current_user=Depends(get_c
 
 @router.get("/donations/monthly")
 def donations_monthly(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    data = []
+    data = reports_crud.get_donations_monthly(db, months=6)
     return {"status": "success", "data": data}
 
 
