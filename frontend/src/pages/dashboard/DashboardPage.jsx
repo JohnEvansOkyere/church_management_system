@@ -22,7 +22,7 @@ const quickActions = [
     title: 'Finance Center',
     detail: 'Record giving and review fund totals.',
     to: '/donations',
-    cta: 'Open Donations',
+    cta: 'Open Finance',
   },
 ];
 

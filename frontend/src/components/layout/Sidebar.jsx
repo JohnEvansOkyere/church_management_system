@@ -7,7 +7,7 @@ const primaryItems = [
 ];
 
 const growthItems = [
-  { to: '/donations', label: 'Donations' },
+  { to: '/donations', label: 'Finance' },
   { to: '/groups', label: 'Groups' },
   { to: '/events', label: 'Events' },
   { to: '/communication', label: 'Communication' },

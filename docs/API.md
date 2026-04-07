@@ -109,7 +109,7 @@ GET    /attendance/member/{id}
 GET    /attendance/summary
 ```
 
-### Donations
+### Finance / Giving
 ```
 GET    /donations
 POST   /donations
@@ -121,6 +121,8 @@ GET    /donations/reports/monthly
 GET    /donations/reports/annual
 GET    /donations/member/{id}/statement
 ```
+
+Current implementation uses `/donations` as the giving API. Product language and future design should treat this as the first part of the broader church `Finance` module.
 
 ### Groups
 ```

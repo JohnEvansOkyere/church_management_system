@@ -50,27 +50,34 @@ Each module has a backend router, CRUD file, model, schema, and a frontend page 
 
 ---
 
-## Module 3: Donations & Finance
+## Module 3: Finance
+
+The finance domain should cover both **giving** and **church financial operations**. In a typical church management system, finance is broader than simple donation logging. It should support tithe, offering, harvest, welfare, missions, special seeds, campaigns, statements, batches, and finance reporting in one place.
 
 **Backend route prefix:** `/api/v1/donations`
 
 ### Endpoints
 | Method | Path | Role Required | Description |
 |---|---|---|---|
-| GET | / | superadmin, finance | List all donations |
-| POST | / | superadmin, finance | Record a donation |
-| GET | /{id} | superadmin, finance | Get donation details |
+| GET | / | superadmin, finance | List all giving records |
+| POST | / | superadmin, finance | Record a giving transaction |
+| GET | /{id} | superadmin, finance | Get giving transaction details |
 | GET | /member/{id} | any (own) superadmin, finance (others) | Member giving history |
-| GET | /funds | any | List all donation funds |
-| POST | /funds | superadmin | Create donation fund |
+| GET | /funds | any | List all church funds and giving categories |
+| POST | /funds | superadmin | Create church fund |
 | GET | /reports/monthly | superadmin, finance | Monthly giving report |
 | GET | /reports/annual | superadmin, finance | Annual giving statement |
-| GET | /member/{id}/statement | superadmin, finance | Member giving statement PDF |
+| GET | /member/{id}/statement | superadmin, finance | Member giving statement |
 
 ### Key Business Logic
-- Total giving dashboard: sum by fund, sum by month
-- Generate PDF giving statement for each member (use WeasyPrint or ReportLab)
-- Online giving webhook endpoint for Paystack/Flutterwave integration (future)
+- Finance should classify giving by church context, not generic donation-only language. Standard funds should include: `tithe`, `offering`, `harvest`, `missions`, `welfare`, `building`, `thanksgiving`, and other custom church funds.
+- Total giving dashboard: sum by fund, sum by month, sum by payment method
+- Generate giving statements per member and optionally per family household
+- Support service-day batching so finance can reconcile all collections from a particular service or event
+- Support pledge/campaign tracking for harvest, building project, missions drive, and similar church campaigns
+- Support deposits and reconciliation flow between giving records and church cash/bank balances
+- Support online giving webhook endpoint for Paystack/Flutterwave integration (future)
+- Keep a path open for broader church finance tables: `finance_batches`, `pledges`, `pledge_payments`, `expense_categories`, `expenses`, `budgets`, and `accounts`
 
 ---
 
@@ -184,4 +191,3 @@ GET `/api/v1/reports/dashboard` — returns:
 - Dashboard loads fast — use aggregated SQL queries, not Python loops
 - Charts data: return arrays of {month, value} for frontend charting (Recharts)
 - All exports use pandas to generate clean spreadsheets
-

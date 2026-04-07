@@ -35,7 +35,7 @@ frontend/src/
 │   ├── members/MembersPage.jsx
 │   ├── members/MemberProfilePage.jsx
 │   ├── attendance/AttendancePage.jsx
-│   ├── donations/DonationsPage.jsx
+│   ├── donations/DonationsPage.jsx   # Finance workspace (current path kept for compatibility)
 │   ├── groups/GroupsPage.jsx
 │   ├── events/EventsPage.jsx
 │   ├── communication/CommunicationPage.jsx
@@ -83,7 +83,7 @@ export default function App() {
           <Route path="members" element={<MembersPage />} />
           <Route path="members/:id" element={<MemberProfilePage />} />
           <Route path="attendance" element={<AttendancePage />} />
-          <Route path="donations" element={<DonationsPage />} />
+          <Route path="donations" element={<DonationsPage />} />  // Finance workspace
           <Route path="groups" element={<GroupsPage />} />
           <Route path="events" element={<EventsPage />} />
           <Route path="communication" element={<CommunicationPage />} />

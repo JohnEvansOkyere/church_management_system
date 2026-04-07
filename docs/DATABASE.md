@@ -16,8 +16,8 @@ Migrations are managed with **Alembic**.
 | `families` | Family groupings |
 | `attendance_sessions` | A single service/event attendance was taken for |
 | `attendance_records` | Individual member attendance per session |
-| `donation_funds` | Categories of giving (Tithe, Building Fund, etc.) |
-| `donations` | Individual donation records |
+| `donation_funds` | Church finance funds/categories (Tithe, Offering, Harvest, Building Fund, etc.) |
+| `donations` | Individual giving records |
 | `groups` | Church ministries and departments |
 | `group_members` | Members assigned to groups |
 | `events` | Church events and programs |
@@ -96,7 +96,7 @@ notes       TEXT
 ### `donation_funds`
 ```sql
 id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
-name        VARCHAR NOT NULL  -- Tithe, Offering, Building Fund, Missions, Welfare
+name        VARCHAR NOT NULL  -- Tithe, Offering, Harvest, Building Fund, Missions, Welfare, Thanksgiving
 description TEXT
 is_active   BOOLEAN DEFAULT TRUE
 ```
@@ -104,7 +104,7 @@ is_active   BOOLEAN DEFAULT TRUE
 ### `donations`
 ```sql
 id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
-member_id   UUID FK members.id NULLABLE  -- nullable for anonymous giving
+member_id   UUID FK members.id NULLABLE  -- nullable for anonymous or loose offering
 fund_id     UUID FK donation_funds.id
 amount      NUMERIC(12, 2) NOT NULL
 currency    VARCHAR DEFAULT 'GHS'
@@ -114,6 +114,72 @@ donation_date DATE NOT NULL
 notes       TEXT
 recorded_by UUID FK users.id
 created_at  TIMESTAMP DEFAULT NOW()
+```
+
+## Finance Expansion Guidance
+
+To support a full church finance module, the system should later expand beyond giving records into:
+
+### `finance_batches`
+```sql
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
+title           VARCHAR NOT NULL  -- e.g. "Sunday Service 1st Collection"
+service_date    DATE NOT NULL
+service_type    VARCHAR
+recorded_by     UUID FK users.id
+created_at      TIMESTAMP DEFAULT NOW()
+```
+
+### `pledges`
+```sql
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
+member_id       UUID FK members.id NULLABLE
+campaign_name   VARCHAR NOT NULL  -- e.g. Harvest 2026, Building Project
+target_amount   NUMERIC(12, 2) NOT NULL
+start_date      DATE
+end_date        DATE
+status          VARCHAR  -- active, fulfilled, cancelled
+created_at      TIMESTAMP DEFAULT NOW()
+```
+
+### `pledge_payments`
+```sql
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
+pledge_id       UUID FK pledges.id
+donation_id     UUID FK donations.id
+amount          NUMERIC(12, 2) NOT NULL
+payment_date    DATE NOT NULL
+```
+
+### `expense_categories`
+```sql
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
+name            VARCHAR NOT NULL  -- Utilities, Welfare, Missions, Payroll, Maintenance
+description     TEXT
+is_active       BOOLEAN DEFAULT TRUE
+```
+
+### `expenses`
+```sql
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
+category_id     UUID FK expense_categories.id
+amount          NUMERIC(12, 2) NOT NULL
+expense_date    DATE NOT NULL
+payment_method  VARCHAR
+reference       VARCHAR
+vendor_name     VARCHAR
+notes           TEXT
+recorded_by     UUID FK users.id
+created_at      TIMESTAMP DEFAULT NOW()
+```
+
+### `budgets`
+```sql
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
+year            INTEGER NOT NULL
+category_name   VARCHAR NOT NULL
+planned_amount  NUMERIC(12, 2) NOT NULL
+actual_amount   NUMERIC(12, 2) DEFAULT 0
 ```
 
 ### `groups`

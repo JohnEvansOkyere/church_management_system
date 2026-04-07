@@ -4,7 +4,7 @@
 **Living Spring International Church Management System**
 Developer: John Evans Okyere | Accra, Ghana | 2026
 
-A web-based church management platform for managing members, attendance, donations, groups, events, and communication.
+A web-based church management platform for managing members, attendance, finance, groups, events, and communication.
 
 ---
 
@@ -41,7 +41,7 @@ church-cms/
 │   │   │       ├── auth.py
 │   │   │       ├── members.py
 │   │   │       ├── attendance.py
-│   │   │       ├── donations.py
+│   │   │       ├── donations.py          # Current finance/giving API module (to expand into broader finance domain)
 │   │   │       ├── groups.py
 │   │   │       ├── events.py
 │   │   │       ├── communication.py

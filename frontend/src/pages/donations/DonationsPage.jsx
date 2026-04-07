@@ -87,11 +87,11 @@ export default function DonationsPage() {
 
   return (
     <section>
-      <PageHeader title="Donations" subtitle="Record giving, manage funds, and review annual finance summaries." />
+      <PageHeader title="Finance" subtitle="Manage church giving, funds, and finance summaries from one workspace." />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Funds" value={funds.length} helper="Active donation funds" />
-        <StatCard label="Donations Logged" value={donationRows.length} helper="Current ledger page" />
+        <StatCard label="Giving Records" value={donationRows.length} helper="Current ledger page" />
         <StatCard label="Annual Total" value={new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(annual?.total ?? 0)} tone="good" />
         <StatCard label="Year" value={annual?.year ?? currentYear} helper="Current annual statement" />
       </div>
