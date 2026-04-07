@@ -17,6 +17,13 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function defaultStartTime(type) {
+  if (type === 'midweek') return '18:00';
+  if (type === 'prayer') return '18:00';
+  if (type === 'special') return '09:00';
+  return '08:00';
+}
+
 function inferDefaultTitle(type) {
   if (type === 'midweek') return 'Midweek Service';
   if (type === 'prayer') return 'Prayer Meeting';
@@ -29,6 +36,7 @@ export default function AttendancePage() {
   const [statusMap, setStatusMap] = useState({});
   const [search, setSearch] = useState('');
   const [quickType, setQuickType] = useState('sunday_service');
+  const [quickStartTime, setQuickStartTime] = useState(defaultStartTime('sunday_service'));
   const [dirty, setDirty] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
@@ -76,6 +84,11 @@ export default function AttendancePage() {
           </span>
         ),
       },
+      {
+        key: 'session_start_time',
+        label: 'Start Time',
+        render: (row) => row.session_start_time ? String(row.session_start_time).slice(0, 5) : '-',
+      },
       { key: 'notes', label: 'Notes' },
     ],
     []
@@ -118,6 +131,7 @@ export default function AttendancePage() {
       title: inferDefaultTitle(quickType),
       session_date: todayISO(),
       session_type: quickType,
+      session_start_time: quickStartTime || null,
       notes: 'Started from quick attendance flow',
     };
 
@@ -147,6 +161,10 @@ export default function AttendancePage() {
 
   const summary = summaryQuery.data?.data;
 
+  useEffect(() => {
+    setQuickStartTime(defaultStartTime(quickType));
+  }, [quickType]);
+
   return (
     <section>
       <PageHeader title="Attendance" subtitle="Start a service quickly and check in members with one-tap controls." />
@@ -162,12 +180,18 @@ export default function AttendancePage() {
       <div className="panel mb-6 p-4">
         <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Quick Start Service</p>
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-          <select value={quickType} onChange={(e) => setQuickType(e.target.value)} className="field">
-            <option value="sunday_service">Sunday Service</option>
-            <option value="midweek">Midweek</option>
-            <option value="prayer">Prayer</option>
-            <option value="special">Special</option>
-          </select>
+          <div className="grid gap-3 md:grid-cols-2">
+            <select value={quickType} onChange={(e) => setQuickType(e.target.value)} className="field">
+              <option value="sunday_service">Sunday Service</option>
+              <option value="midweek">Midweek</option>
+              <option value="prayer">Prayer</option>
+              <option value="special">Special</option>
+            </select>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Service Start Time</label>
+              <input type="time" value={quickStartTime} onChange={(e) => setQuickStartTime(e.target.value)} className="field" />
+            </div>
+          </div>
           <button type="button" onClick={onQuickStart} className="btn-primary">
             {createMutation.isPending ? 'Starting...' : 'Start Today\'s Service'}
           </button>
@@ -182,7 +206,7 @@ export default function AttendancePage() {
             <option value="">Select attendance session</option>
             {sessions.map((session) => (
               <option key={session.id} value={session.id}>
-                {session.title} - {formatDate(session.session_date)}
+                {session.title} - {formatDate(session.session_date)}{session.session_start_time ? ` · ${String(session.session_start_time).slice(0, 5)}` : ''}
               </option>
             ))}
           </select>

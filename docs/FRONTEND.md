@@ -43,12 +43,14 @@ frontend/src/
 ├── hooks/
 │   ├── useMembers.js
 │   ├── useAttendance.js
-│   └── useDonations.js
+│   ├── useDonations.js
+│   └── useReports.js
 ├── services/
 │   ├── api.js
 │   ├── memberService.js
 │   ├── attendanceService.js
-│   └── donationService.js
+│   ├── donationsService.js
+│   └── reportsService.js
 ├── store/
 │   └── authStore.js
 ├── utils/
@@ -196,3 +198,15 @@ export const MARITAL_STATUS = ['single', 'married', 'divorced', 'widowed'];
 export const DONATION_METHODS = ['cash', 'mobile_money', 'cheque', 'online'];
 export const ATTENDANCE_TYPES = ['sunday_service', 'midweek', 'prayer', 'special'];
 ```
+
+Finance UI should follow church workflow:
+- record tithe per member
+- record offering/harvest/thanksgiving without forcing a member
+- group service-day collections into finance batches
+- record expenses and show both inflow and outflow on dashboard
+
+Member profile UI should behave like an activity page:
+- profile details
+- attendance history and percentage
+- punctuality metrics
+- giving history and tithe totals

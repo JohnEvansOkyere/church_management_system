@@ -5,7 +5,7 @@ from sqlalchemy import and_, extract, func
 from sqlalchemy.orm import Session
 
 from app.models.attendance import AttendanceRecord, AttendanceSession
-from app.models.donation import Donation
+from app.models.donation import Donation, Expense
 from app.models.member import Member
 
 
@@ -95,6 +95,21 @@ def get_dashboard_stats(db: Session) -> dict:
         .scalar()
         or 0
     )
+    expenses_this_month = (
+        db.query(func.coalesce(func.sum(Expense.amount), 0))
+        .filter(
+            extract("year", Expense.expense_date) == today.year,
+            extract("month", Expense.expense_date) == today.month,
+        )
+        .scalar()
+        or 0
+    )
+    expenses_this_year = (
+        db.query(func.coalesce(func.sum(Expense.amount), 0))
+        .filter(extract("year", Expense.expense_date) == today.year)
+        .scalar()
+        or 0
+    )
 
     return {
         "total_members": total_members,
@@ -103,6 +118,9 @@ def get_dashboard_stats(db: Session) -> dict:
         "attendance_percentage": attendance_percentage,
         "donations_this_month": float(donations_this_month),
         "donations_this_year": float(donations_this_year),
+        "expenses_this_month": float(expenses_this_month),
+        "expenses_this_year": float(expenses_this_year),
+        "net_flow_this_month": float(donations_this_month) - float(expenses_this_month),
         "low_attendance_members": _low_attendance_count(db),
         "upcoming_events": 0,
     }
@@ -170,6 +188,29 @@ def get_donations_monthly(db: Session, months: int = 6) -> list[dict]:
         )
         .filter(Donation.donation_date >= start)
         .group_by(func.date_trunc("month", Donation.donation_date))
+        .all()
+    )
+
+    row_map = {date(r.month.year, r.month.month, 1): float(r.total_amount) for r in rows}
+
+    data = []
+    for i in range(months):
+        month = _add_months(start, i)
+        data.append({"month": _month_label(month), "value": row_map.get(month, 0)})
+    return data
+
+
+def get_expenses_monthly(db: Session, months: int = 6) -> list[dict]:
+    today = date.today()
+    start = _add_months(_month_start(today), -(months - 1))
+
+    rows = (
+        db.query(
+            func.date_trunc("month", Expense.expense_date).label("month"),
+            func.coalesce(func.sum(Expense.amount), 0).label("total_amount"),
+        )
+        .filter(Expense.expense_date >= start)
+        .group_by(func.date_trunc("month", Expense.expense_date))
         .all()
     )
 

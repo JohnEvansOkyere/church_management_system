@@ -16,6 +16,14 @@ export function useMember(memberId) {
   });
 }
 
+export function useMemberActivity(memberId) {
+  return useQuery({
+    queryKey: ['member-activity', memberId],
+    queryFn: () => memberService.getActivity(memberId).then((r) => r.data),
+    enabled: Boolean(memberId),
+  });
+}
+
 export function useCreateMember() {
   const queryClient = useQueryClient();
 

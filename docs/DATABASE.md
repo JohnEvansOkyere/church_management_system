@@ -16,6 +16,7 @@ Migrations are managed with **Alembic**.
 | `families` | Family groupings |
 | `attendance_sessions` | A single service/event attendance was taken for |
 | `attendance_records` | Individual member attendance per session |
+| `finance_batches` | Service-day or event-day finance reconciliation batches |
 | `donation_funds` | Church finance funds/categories (Tithe, Offering, Harvest, Building Fund, etc.) |
 | `donations` | Individual giving records |
 | `groups` | Church ministries and departments |
@@ -78,6 +79,7 @@ id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
 title       VARCHAR NOT NULL  -- e.g. "Sunday Service", "Midweek Prayer"
 session_date DATE NOT NULL
 session_type VARCHAR  -- sunday_service, midweek, prayer, special
+session_start_time TIME  -- used for punctuality tracking
 notes        TEXT
 created_by   UUID FK users.id
 created_at   TIMESTAMP DEFAULT NOW()
@@ -93,11 +95,25 @@ checked_in_at TIMESTAMP
 notes       TEXT
 ```
 
+### `finance_batches`
+```sql
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
+title           VARCHAR NOT NULL  -- e.g. "Sunday Service 1st Collection"
+service_date    DATE NOT NULL
+service_type    VARCHAR
+notes           TEXT
+is_closed       BOOLEAN DEFAULT FALSE
+recorded_by     UUID FK users.id
+created_at      TIMESTAMP DEFAULT NOW()
+```
+
 ### `donation_funds`
 ```sql
 id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
 name        VARCHAR NOT NULL  -- Tithe, Offering, Harvest, Building Fund, Missions, Welfare, Thanksgiving
+code        VARCHAR UNIQUE  -- tithe, offering, harvest, etc.
 description TEXT
+requires_member BOOLEAN DEFAULT FALSE  -- true for per-member giving like tithe
 is_active   BOOLEAN DEFAULT TRUE
 ```
 
@@ -105,6 +121,7 @@ is_active   BOOLEAN DEFAULT TRUE
 ```sql
 id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
 member_id   UUID FK members.id NULLABLE  -- nullable for anonymous or loose offering
+batch_id    UUID FK finance_batches.id NULLABLE
 fund_id     UUID FK donation_funds.id
 amount      NUMERIC(12, 2) NOT NULL
 currency    VARCHAR DEFAULT 'GHS'
@@ -118,17 +135,7 @@ created_at  TIMESTAMP DEFAULT NOW()
 
 ## Finance Expansion Guidance
 
-To support a full church finance module, the system should later expand beyond giving records into:
-
-### `finance_batches`
-```sql
-id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
-title           VARCHAR NOT NULL  -- e.g. "Sunday Service 1st Collection"
-service_date    DATE NOT NULL
-service_type    VARCHAR
-recorded_by     UUID FK users.id
-created_at      TIMESTAMP DEFAULT NOW()
-```
+To support a fuller church finance module, the system should next expand beyond batches and giving records into:
 
 ### `pledges`
 ```sql
@@ -165,6 +172,7 @@ id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
 category_id     UUID FK expense_categories.id
 amount          NUMERIC(12, 2) NOT NULL
 expense_date    DATE NOT NULL
+currency        VARCHAR DEFAULT 'GHS'
 payment_method  VARCHAR
 reference       VARCHAR
 vendor_name     VARCHAR
@@ -181,6 +189,15 @@ category_name   VARCHAR NOT NULL
 planned_amount  NUMERIC(12, 2) NOT NULL
 actual_amount   NUMERIC(12, 2) DEFAULT 0
 ```
+
+## Member Activity Metrics
+
+Member activity reporting should support:
+- giving totals per member
+- tithe totals per member
+- attendance percentage
+- present / absent / excused totals
+- punctuality metrics derived from `checked_in_at` versus `session_start_time`
 
 ### `groups`
 ```sql

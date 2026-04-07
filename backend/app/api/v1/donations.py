@@ -7,7 +7,18 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user, require_roles
 from app.crud import donation as donation_crud
 from app.db.database import get_db
-from app.schemas.donation import DonationCreate, DonationFundCreate, DonationFundResponse, DonationResponse
+from app.schemas.donation import (
+    DonationCreate,
+    DonationFundCreate,
+    DonationFundResponse,
+    DonationResponse,
+    ExpenseCategoryCreate,
+    ExpenseCategoryResponse,
+    ExpenseCreate,
+    ExpenseResponse,
+    FinanceBatchCreate,
+    FinanceBatchResponse,
+)
 
 router = APIRouter()
 
@@ -15,6 +26,14 @@ router = APIRouter()
 def serialize_donation(row) -> dict:
     data = DonationResponse.model_validate(row).model_dump()
     data["fund_name"] = row.fund.name if row.fund else None
+    data["batch_title"] = row.batch.title if row.batch else None
+    data["member_name"] = f"{row.member.first_name} {row.member.last_name}" if row.member else None
+    return data
+
+
+def serialize_expense(row) -> dict:
+    data = ExpenseResponse.model_validate(row).model_dump()
+    data["category_name"] = row.category.name if row.category else None
     return data
 
 
@@ -22,10 +41,11 @@ def serialize_donation(row) -> dict:
 def list_donations(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
+    batch_id: UUID | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles("superadmin", "finance")),
 ):
-    rows, total = donation_crud.list_donations(db, skip=skip, limit=limit)
+    rows, total = donation_crud.list_donations(db, skip=skip, limit=limit, batch_id=batch_id)
     page = (skip // limit) + 1
     return {"status": "success", "data": [serialize_donation(row) for row in rows], "total": total, "page": page, "limit": limit}
 
@@ -36,13 +56,25 @@ def create_donation(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles("superadmin", "finance")),
 ):
-    row = donation_crud.create_donation(db, payload, recorded_by=current_user.id)
+    try:
+        row = donation_crud.create_donation(db, payload, recorded_by=current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"status": "success", "data": serialize_donation(row)}
 
 
 @router.get("/funds")
 def list_funds(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     rows = donation_crud.list_funds(db)
+    return {"status": "success", "data": [DonationFundResponse.model_validate(row).model_dump() for row in rows]}
+
+
+@router.post("/funds/bootstrap", status_code=status.HTTP_201_CREATED)
+def bootstrap_funds(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin")),
+):
+    rows = donation_crud.bootstrap_standard_funds(db)
     return {"status": "success", "data": [DonationFundResponse.model_validate(row).model_dump() for row in rows]}
 
 
@@ -54,6 +86,29 @@ def create_fund(
 ):
     row = donation_crud.create_fund(db, payload)
     return {"status": "success", "data": DonationFundResponse.model_validate(row).model_dump()}
+
+
+@router.get("/batches")
+def list_batches(
+    include_closed: bool = Query(default=True),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin", "finance")),
+):
+    rows = donation_crud.list_batches(db, include_closed=include_closed)
+    return {"status": "success", "data": [FinanceBatchResponse.model_validate(row).model_dump() for row in rows]}
+
+
+@router.post("/batches", status_code=status.HTTP_201_CREATED)
+def create_batch(
+    payload: FinanceBatchCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin", "finance")),
+):
+    row = donation_crud.create_batch(db, payload, recorded_by=current_user.id)
+    data = FinanceBatchResponse.model_validate(row).model_dump()
+    data["total_amount"] = 0
+    data["transaction_count"] = 0
+    return {"status": "success", "data": data}
 
 
 @router.get("/member/{member_id}")
@@ -75,6 +130,53 @@ def monthly_report(
     current_user=Depends(require_roles("superadmin", "finance")),
 ):
     return {"status": "success", "data": donation_crud.monthly_report(db, year=year)}
+
+
+@router.get("/expenses")
+def list_expenses(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin", "finance")),
+):
+    rows, total = donation_crud.list_expenses(db, skip=skip, limit=limit)
+    page = (skip // limit) + 1
+    return {"status": "success", "data": [serialize_expense(row) for row in rows], "total": total, "page": page, "limit": limit}
+
+
+@router.post("/expenses", status_code=status.HTTP_201_CREATED)
+def create_expense(
+    payload: ExpenseCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin", "finance")),
+):
+    row = donation_crud.create_expense(db, payload, recorded_by=current_user.id)
+    return {"status": "success", "data": serialize_expense(row)}
+
+
+@router.get("/expense-categories")
+def list_expense_categories(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    rows = donation_crud.list_expense_categories(db)
+    return {"status": "success", "data": [ExpenseCategoryResponse.model_validate(row).model_dump() for row in rows]}
+
+
+@router.post("/expense-categories/bootstrap", status_code=status.HTTP_201_CREATED)
+def bootstrap_expense_categories(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin")),
+):
+    rows = donation_crud.bootstrap_expense_categories(db)
+    return {"status": "success", "data": [ExpenseCategoryResponse.model_validate(row).model_dump() for row in rows]}
+
+
+@router.post("/expense-categories", status_code=status.HTTP_201_CREATED)
+def create_expense_category(
+    payload: ExpenseCategoryCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin")),
+):
+    row = donation_crud.create_expense_category(db, payload)
+    return {"status": "success", "data": ExpenseCategoryResponse.model_validate(row).model_dump()}
 
 
 @router.get("/reports/annual")

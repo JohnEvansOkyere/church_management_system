@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Literal, Optional
 from uuid import UUID
 
@@ -9,6 +9,7 @@ class AttendanceSessionCreate(BaseModel):
     title: str
     session_date: date
     session_type: Optional[str] = None
+    session_start_time: Optional[time] = None
     notes: Optional[str] = None
 
 
@@ -17,6 +18,7 @@ class AttendanceSessionResponse(BaseModel):
     title: str
     session_date: date
     session_type: Optional[str] = None
+    session_start_time: Optional[time] = None
     notes: Optional[str] = None
     created_by: Optional[UUID] = None
     created_at: datetime

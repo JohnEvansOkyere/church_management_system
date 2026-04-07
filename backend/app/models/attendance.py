@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import Column, Date, DateTime, ForeignKey, String, Text, Time, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -14,6 +14,7 @@ class AttendanceSession(Base):
     title = Column(String, nullable=False)
     session_date = Column(Date, nullable=False)
     session_type = Column(String, nullable=True)
+    session_start_time = Column(Time, nullable=True)
     notes = Column(Text, nullable=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

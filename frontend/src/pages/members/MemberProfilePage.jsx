@@ -5,15 +5,16 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
 import { useMemberAttendanceHistory } from '../../hooks/useAttendance';
-import { useDeleteMember, useMember, useUpdateMember, useUploadMemberPhoto } from '../../hooks/useMembers';
+import { useDeleteMember, useMember, useMemberActivity, useUpdateMember, useUploadMemberPhoto } from '../../hooks/useMembers';
 import { GENDERS, MARITAL_STATUS, MEMBERSHIP_STATUS } from '../../utils/constants';
-import { formatDate } from '../../utils/formatters';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 import { resolvePhotoUrl } from '../../utils/media';
 
 export default function MemberProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const memberQuery = useMember(id);
+  const activityQuery = useMemberActivity(id);
   const attendanceQuery = useMemberAttendanceHistory(id);
   const updateMutation = useUpdateMember();
   const deleteMutation = useDeleteMember();
@@ -82,6 +83,10 @@ export default function MemberProfilePage() {
 
   const history = attendanceQuery.data?.data?.history ?? [];
   const attendancePercentage = attendanceQuery.data?.data?.attendance_percentage ?? 0;
+  const activity = activityQuery.data?.data;
+  const overview = activity?.overview;
+  const giving = activity?.giving;
+  const attendance = activity?.attendance;
 
   const columns = [
     { key: 'session_title', label: 'Session' },
@@ -94,6 +99,14 @@ export default function MemberProfilePage() {
       ),
     },
     { key: 'notes', label: 'Notes' },
+  ];
+
+  const givingColumns = [
+    { key: 'donation_date', label: 'Date', render: (row) => formatDate(row.donation_date) },
+    { key: 'fund_name', label: 'Fund' },
+    { key: 'batch_title', label: 'Batch', render: (row) => row.batch_title || 'Direct entry' },
+    { key: 'amount', label: 'Amount', render: (row) => formatCurrency(row.amount, row.currency || 'GHS') },
+    { key: 'payment_method', label: 'Method' },
   ];
 
   async function onSave(event) {
@@ -151,8 +164,97 @@ export default function MemberProfilePage() {
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Membership Status" value={member.membership_status || '-'} />
         <StatCard label="Attendance Rate" value={`${attendancePercentage}%`} tone={attendancePercentage >= 50 ? 'good' : 'warn'} />
-        <StatCard label="Family ID" value={member.family_id ? 'Linked' : 'Not linked'} />
-        <StatCard label="Class Completed" value={member.membership_class_completed ? 'Yes' : 'No'} />
+        <StatCard label="Total Giving" value={formatCurrency(overview?.total_giving ?? 0)} />
+        <StatCard label="Tithe Given" value={formatCurrency(overview?.tithe_total ?? 0)} />
+      </div>
+
+      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Last Attendance" value={overview?.last_present_date ? formatDate(overview.last_present_date) : 'No present record'} />
+        <StatCard label="Giving Entries" value={overview?.giving_entries ?? 0} />
+        <StatCard label="Punctuality" value={attendance?.punctuality_tracked ? `${attendance?.punctuality_rate ?? 0}%` : 'Not tracked'} tone={attendance?.punctuality_tracked && (attendance?.punctuality_rate ?? 0) >= 70 ? 'good' : 'warn'} />
+        <StatCard label="Family" value={member.family_id ? 'Linked' : 'Not linked'} />
+        <StatCard label="Membership Class" value={member.membership_class_completed ? 'Completed' : 'Pending'} />
+      </div>
+
+      <div className="panel mb-6 p-5">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Activity Overview</p>
+            <h3 className="mt-1 text-lg font-semibold text-slate-900">Attendance and finance snapshot</h3>
+          </div>
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            {overview?.low_attendance ? 'Marked as low attendance risk' : 'Attendance currently healthy'}
+          </div>
+        </div>
+
+        {activityQuery.isLoading ? (
+          <LoadingSpinner label="Loading member activity..." />
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Attendance</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-slate-500">Present</p>
+                  <p className="text-xl font-bold text-slate-900">{attendance?.present_count ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Absent</p>
+                  <p className="text-xl font-bold text-slate-900">{attendance?.absent_count ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Excused</p>
+                  <p className="text-xl font-bold text-slate-900">{attendance?.excused_count ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Sessions Marked</p>
+                  <p className="text-xl font-bold text-slate-900">{attendance?.total_sessions_marked ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">On Time</p>
+                  <p className="text-xl font-bold text-slate-900">{attendance?.on_time_count ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Late</p>
+                  <p className="text-xl font-bold text-slate-900">{attendance?.late_count ?? 0}</p>
+                </div>
+              </div>
+              <div className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                {attendance?.punctuality_note || 'Punctuality is not yet tracked.'}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Giving</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-slate-500">Total Giving</p>
+                  <p className="text-xl font-bold text-slate-900">{formatCurrency(giving?.total_giving ?? 0)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Tithe Total</p>
+                  <p className="text-xl font-bold text-slate-900">{formatCurrency(giving?.tithe_total ?? 0)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Entries</p>
+                  <p className="text-xl font-bold text-slate-900">{giving?.giving_entries ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Last Giving</p>
+                  <p className="text-base font-semibold text-slate-900">{giving?.last_giving_date ? formatDate(giving.last_giving_date) : 'No giving yet'}</p>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
+                {(giving?.fund_breakdown ?? []).slice(0, 4).map((item) => (
+                  <div key={item.fund} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                    <span className="font-medium text-slate-700">{item.fund}</span>
+                    <span className="font-bold text-slate-900">{formatCurrency(item.value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="panel mb-6 p-5">
@@ -199,7 +301,10 @@ export default function MemberProfilePage() {
             ))}
           </select>
 
-          <input className="field" type="date" value={form.date_of_birth} onChange={(e) => setForm((p) => ({ ...p, date_of_birth: e.target.value }))} />
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date of Birth</label>
+            <input className="field" type="date" value={form.date_of_birth} onChange={(e) => setForm((p) => ({ ...p, date_of_birth: e.target.value }))} />
+          </div>
 
           <select className="field" value={form.marital_status} onChange={(e) => setForm((p) => ({ ...p, marital_status: e.target.value }))}>
             <option value="">Marital status</option>
@@ -216,7 +321,10 @@ export default function MemberProfilePage() {
             ))}
           </select>
 
-          <input className="field" type="date" value={form.date_joined} onChange={(e) => setForm((p) => ({ ...p, date_joined: e.target.value }))} />
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date Joined</label>
+            <input className="field" type="date" value={form.date_joined} onChange={(e) => setForm((p) => ({ ...p, date_joined: e.target.value }))} />
+          </div>
           <input className="field" type="date" value={form.baptism_date} onChange={(e) => setForm((p) => ({ ...p, baptism_date: e.target.value }))} />
           <input className="field" value={form.family_id} onChange={(e) => setForm((p) => ({ ...p, family_id: e.target.value }))} placeholder="Family ID (UUID)" />
           <input className="field md:col-span-2 xl:col-span-4" value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} placeholder="Address" />
@@ -257,8 +365,20 @@ export default function MemberProfilePage() {
       {attendanceQuery.isLoading ? (
         <LoadingSpinner label="Loading attendance history..." />
       ) : (
-        <DataTable columns={columns} rows={history} emptyLabel="No attendance records yet" />
+        <div className="mb-6">
+          <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Attendance History</p>
+          <DataTable columns={columns} rows={history} emptyLabel="No attendance records yet" />
+        </div>
       )}
+
+      <div className="panel p-5">
+        <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Giving History</p>
+        {activityQuery.isLoading ? (
+          <LoadingSpinner label="Loading giving history..." />
+        ) : (
+          <DataTable columns={givingColumns} rows={giving?.recent_entries ?? []} emptyLabel="No member-linked giving records yet" />
+        )}
+      </div>
     </section>
   );
 }

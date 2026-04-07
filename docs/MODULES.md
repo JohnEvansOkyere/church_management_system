@@ -46,6 +46,7 @@ Each module has a backend router, CRUD file, model, schema, and a frontend page 
 - A session must be created before attendance can be marked
 - Bulk mark attendance: accept array of {member_id, status} objects
 - Calculate attendance percentage per member (present / total sessions)
+- Track punctuality from `checked_in_at` against `session_start_time`
 - Flag members below 50% attendance for pastoral follow-up
 
 ---
@@ -64,14 +65,24 @@ The finance domain should cover both **giving** and **church financial operation
 | GET | /{id} | superadmin, finance | Get giving transaction details |
 | GET | /member/{id} | any (own) superadmin, finance (others) | Member giving history |
 | GET | /funds | any | List all church funds and giving categories |
+| GET | /batches | superadmin, finance | List finance service/event batches |
+| POST | /batches | superadmin, finance | Create finance batch for a service or event |
 | POST | /funds | superadmin | Create church fund |
+| POST | /funds/bootstrap | superadmin | Load standard church finance funds |
+| GET | /expense-categories | any | List finance expense categories |
+| POST | /expense-categories | superadmin | Create expense category |
+| POST | /expense-categories/bootstrap | superadmin | Load standard expense categories |
+| GET | /expenses | superadmin, finance | List church expense records |
+| POST | /expenses | superadmin, finance | Record an expense |
 | GET | /reports/monthly | superadmin, finance | Monthly giving report |
 | GET | /reports/annual | superadmin, finance | Annual giving statement |
 | GET | /member/{id}/statement | superadmin, finance | Member giving statement |
 
 ### Key Business Logic
 - Finance should classify giving by church context, not generic donation-only language. Standard funds should include: `tithe`, `offering`, `harvest`, `missions`, `welfare`, `building`, `thanksgiving`, and other custom church funds.
+- Some funds require a member link. Example: `tithe` should be recorded per member; `offering` can be recorded as a general church collection without a member.
 - Total giving dashboard: sum by fund, sum by month, sum by payment method
+- Finance should also capture expense categories, expense ledger, and monthly cash outflow
 - Generate giving statements per member and optionally per family household
 - Support service-day batching so finance can reconcile all collections from a particular service or event
 - Support pledge/campaign tracking for harvest, building project, missions drive, and similar church campaigns
@@ -172,6 +183,9 @@ GET `/api/v1/reports/dashboard` — returns:
   "attendance_percentage": 72,
   "donations_this_month": 15000.00,
   "donations_this_year": 180000.00,
+  "expenses_this_month": 9000.00,
+  "expenses_this_year": 84000.00,
+  "net_flow_this_month": 6000.00,
   "low_attendance_members": 18,
   "upcoming_events": 3
 }
@@ -183,6 +197,7 @@ GET `/api/v1/reports/dashboard` — returns:
 | GET | /dashboard | Main dashboard stats |
 | GET | /attendance/monthly | Monthly attendance trend |
 | GET | /donations/monthly | Monthly giving trend |
+| GET | /expenses/monthly | Monthly expense trend |
 | GET | /members/growth | Member growth over time |
 | GET | /export/members | Export members CSV |
 | GET | /export/donations | Export donations Excel |
@@ -190,4 +205,5 @@ GET `/api/v1/reports/dashboard` — returns:
 ### Key Business Logic
 - Dashboard loads fast — use aggregated SQL queries, not Python loops
 - Charts data: return arrays of {month, value} for frontend charting (Recharts)
+- Dashboard should show both income and expenses, plus monthly net flow
 - All exports use pandas to generate clean spreadsheets

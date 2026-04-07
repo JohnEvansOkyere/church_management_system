@@ -3,10 +3,11 @@ import io
 from datetime import date, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, or_
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from app.models.attendance import AttendanceRecord, AttendanceSession
+from app.models.donation import Donation, DonationFund
 from app.models.family import Family
 from app.models.member import Member
 from app.schemas.member import MemberCreate, MemberUpdate
@@ -118,3 +119,64 @@ def generate_members_csv(members: list[Member]) -> str:
         ])
 
     return output.getvalue()
+
+
+def get_member_activity_overview(db: Session, member_id: UUID) -> dict | None:
+    member = get_member(db, member_id)
+    if not member:
+        return None
+
+    total_giving = (
+        db.query(func.coalesce(func.sum(Donation.amount), 0))
+        .filter(Donation.member_id == member_id)
+        .scalar()
+        or 0
+    )
+    tithe_total = (
+        db.query(func.coalesce(func.sum(Donation.amount), 0))
+        .join(DonationFund, DonationFund.id == Donation.fund_id)
+        .filter(Donation.member_id == member_id, func.lower(DonationFund.code) == "tithe")
+        .scalar()
+        or 0
+    )
+    giving_entries = db.query(func.count(Donation.id)).filter(Donation.member_id == member_id).scalar() or 0
+    latest_giving_date = (
+        db.query(func.max(Donation.donation_date))
+        .filter(Donation.member_id == member_id)
+        .scalar()
+    )
+    last_present_date = (
+        db.query(func.max(AttendanceSession.session_date))
+        .join(AttendanceRecord, AttendanceRecord.session_id == AttendanceSession.id)
+        .filter(AttendanceRecord.member_id == member_id, AttendanceRecord.status == "present")
+        .scalar()
+    )
+    attendance_rows = (
+        db.query(
+            func.sum(case((AttendanceRecord.status == "present", 1), else_=0)).label("present_count"),
+            func.sum(case((AttendanceRecord.status == "absent", 1), else_=0)).label("absent_count"),
+            func.sum(case((AttendanceRecord.status == "excused", 1), else_=0)).label("excused_count"),
+            func.count(AttendanceRecord.id).label("record_count"),
+        )
+        .filter(AttendanceRecord.member_id == member_id)
+        .first()
+    )
+    record_count = int(attendance_rows.record_count or 0)
+    present_count = int(attendance_rows.present_count or 0)
+    absent_count = int(attendance_rows.absent_count or 0)
+    excused_count = int(attendance_rows.excused_count or 0)
+    attendance_percentage = round((present_count / record_count) * 100, 2) if record_count else 0.0
+    return {
+        "member_id": member_id,
+        "attendance_percentage": attendance_percentage,
+        "present_count": present_count,
+        "absent_count": absent_count,
+        "excused_count": excused_count,
+        "total_sessions_marked": record_count,
+        "last_present_date": last_present_date,
+        "total_giving": float(total_giving),
+        "tithe_total": float(tithe_total),
+        "giving_entries": int(giving_entries),
+        "latest_giving_date": latest_giving_date,
+        "low_attendance": build_low_attendance_map(db, [member_id]).get(member_id, False),
+    }

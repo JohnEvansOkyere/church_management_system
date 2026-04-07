@@ -26,6 +26,12 @@ def donations_monthly(db: Session = Depends(get_db), current_user=Depends(get_cu
     return {"status": "success", "data": data}
 
 
+@router.get("/expenses/monthly")
+def expenses_monthly(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    data = reports_crud.get_expenses_monthly(db, months=6)
+    return {"status": "success", "data": data}
+
+
 @router.get("/members/growth")
 def members_growth(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     data = reports_crud.get_members_growth(db, months=6)

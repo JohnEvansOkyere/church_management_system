@@ -7,11 +7,22 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, require_roles
+from app.crud import attendance as attendance_crud
+from app.crud import donation as donation_crud
 from app.crud import member as member_crud
 from app.db.database import get_db
+from app.schemas.donation import DonationResponse
 from app.schemas.member import MemberCreate, MemberResponse, MemberUpdate
 
 router = APIRouter()
+
+
+def _serialize_donation_activity(row) -> dict:
+    data = DonationResponse.model_validate(row).model_dump()
+    data["fund_name"] = row.fund.name if row.fund else None
+    data["batch_title"] = row.batch.title if row.batch else None
+    data["member_name"] = f"{row.member.first_name} {row.member.last_name}" if row.member else None
+    return data
 
 
 @router.get("/")
@@ -98,6 +109,33 @@ def get_member(
     row = MemberResponse.model_validate(member).model_dump()
     row["low_attendance"] = low_map.get(member.id, False)
     return {"status": "success", "data": row}
+
+
+@router.get("/{member_id}/activity")
+def get_member_activity(
+    member_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    member = member_crud.get_member(db, member_id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    overview = member_crud.get_member_activity_overview(db, member_id)
+    attendance = attendance_crud.member_activity_summary(db, member_id)
+    giving = donation_crud.member_giving_summary(db, member_id)
+
+    return {
+        "status": "success",
+        "data": {
+            "overview": overview,
+            "attendance": attendance,
+            "giving": {
+                **giving,
+                "recent_entries": [_serialize_donation_activity(row) for row in giving["recent_entries"]],
+            },
+        },
+    }
 
 
 @router.put("/{member_id}")

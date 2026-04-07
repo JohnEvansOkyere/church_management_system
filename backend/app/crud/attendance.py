@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import case, func
@@ -84,13 +84,60 @@ def member_attendance_history(db: Session, member_id: UUID):
         {
             "session_id": session.id,
             "session_title": session.title,
+            "session_type": session.session_type,
             "session_date": session.session_date,
+            "session_start_time": session.session_start_time,
             "status": record.status,
+            "checked_in_at": record.checked_in_at,
             "notes": record.notes,
         }
         for record, session in rows
     ]
     return history, percentage
+
+
+def _session_start_datetime(session_date: date, session_start_time: time | None) -> datetime | None:
+    if not session_start_time:
+        return None
+    return datetime.combine(session_date, session_start_time, tzinfo=timezone.utc)
+
+
+def member_activity_summary(db: Session, member_id: UUID) -> dict:
+    history, attendance_percentage = member_attendance_history(db, member_id)
+    total_records = len(history)
+    present_count = sum(1 for row in history if row["status"] == "present")
+    absent_count = sum(1 for row in history if row["status"] == "absent")
+    excused_count = sum(1 for row in history if row["status"] == "excused")
+    last_present = next((row for row in history if row["status"] == "present"), None)
+    punctuality_rows = [row for row in history if row["status"] == "present" and row["checked_in_at"] and row["session_start_time"]]
+    grace_period = timedelta(minutes=15)
+    on_time_count = 0
+    late_count = 0
+    for row in punctuality_rows:
+        start_at = _session_start_datetime(row["session_date"], row["session_start_time"])
+        if not start_at:
+            continue
+        checked_in_at = row["checked_in_at"]
+        if checked_in_at <= start_at + grace_period:
+            on_time_count += 1
+        else:
+            late_count += 1
+    punctuality_rate = round((on_time_count / len(punctuality_rows)) * 100, 2) if punctuality_rows else 0.0
+
+    return {
+        "attendance_percentage": attendance_percentage,
+        "total_sessions_marked": total_records,
+        "present_count": present_count,
+        "absent_count": absent_count,
+        "excused_count": excused_count,
+        "last_present_date": last_present["session_date"] if last_present else None,
+        "punctuality_tracked": bool(punctuality_rows),
+        "punctuality_note": "Punctuality is measured from session start time with a 15-minute grace period.",
+        "on_time_count": on_time_count,
+        "late_count": late_count,
+        "punctuality_rate": punctuality_rate,
+        "history": history[:12],
+    }
 
 
 def attendance_summary(db: Session):

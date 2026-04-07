@@ -23,6 +23,13 @@ export function useDonationsMonthlyReport() {
   });
 }
 
+export function useExpensesMonthlyReport() {
+  return useQuery({
+    queryKey: ['reports-expenses-monthly'],
+    queryFn: () => reportsService.getExpensesMonthly().then((r) => r.data),
+  });
+}
+
 
 export function useMembersGrowthReport() {
   return useQuery({

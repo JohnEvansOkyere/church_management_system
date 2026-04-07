@@ -19,6 +19,29 @@ export function useDonationFunds() {
 }
 
 
+export function useFinanceBatches(params = { include_closed: true }) {
+  return useQuery({
+    queryKey: ['finance-batches', params],
+    queryFn: () => donationsService.getBatches(params).then((r) => r.data),
+  });
+}
+
+export function useExpenses(params) {
+  return useQuery({
+    queryKey: ['expenses', params],
+    queryFn: () => donationsService.getExpenses(params).then((r) => r.data),
+  });
+}
+
+
+export function useExpenseCategories() {
+  return useQuery({
+    queryKey: ['expense-categories'],
+    queryFn: () => donationsService.getExpenseCategories().then((r) => r.data),
+  });
+}
+
+
 export function useDonationAnnualReport(year) {
   return useQuery({
     queryKey: ['donation-annual-report', year],
@@ -35,6 +58,7 @@ export function useCreateDonation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['donations'] });
       queryClient.invalidateQueries({ queryKey: ['donation-annual-report'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-batches'] });
       queryClient.invalidateQueries({ queryKey: ['reports-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['reports-donations-monthly'] });
     },
@@ -49,6 +73,67 @@ export function useCreateDonationFund() {
     mutationFn: (payload) => donationsService.createFund(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['donation-funds'] });
+    },
+  });
+}
+
+
+export function useBootstrapDonationFunds() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => donationsService.bootstrapFunds(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['donation-funds'] });
+    },
+  });
+}
+
+export function useBootstrapExpenseCategories() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => donationsService.bootstrapExpenseCategories(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+    },
+  });
+}
+
+
+export function useCreateFinanceBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload) => donationsService.createBatch(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-batches'] });
+    },
+  });
+}
+
+
+export function useCreateExpense() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload) => donationsService.createExpense(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['reports-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['reports-expenses-monthly'] });
+    },
+  });
+}
+
+
+export function useCreateExpenseCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload) => donationsService.createExpenseCategory(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
     },
   });
 }

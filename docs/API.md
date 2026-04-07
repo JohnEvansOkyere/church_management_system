@@ -109,20 +109,31 @@ GET    /attendance/member/{id}
 GET    /attendance/summary
 ```
 
+Attendance sessions now support `session_start_time`, which is used for punctuality calculations.
+
 ### Finance / Giving
 ```
 GET    /donations
 POST   /donations
 GET    /donations/{id}
 GET    /donations/member/{id}
+GET    /donations/batches
+POST   /donations/batches
 GET    /donations/funds
 POST   /donations/funds
+POST   /donations/funds/bootstrap
+GET    /donations/expense-categories
+POST   /donations/expense-categories
+POST   /donations/expense-categories/bootstrap
+GET    /donations/expenses
+POST   /donations/expenses
 GET    /donations/reports/monthly
 GET    /donations/reports/annual
 GET    /donations/member/{id}/statement
 ```
 
 Current implementation uses `/donations` as the giving API. Product language and future design should treat this as the first part of the broader church `Finance` module.
+Funds may enforce member linkage. Example: `tithe` requires a member, while `offering` does not.
 
 ### Groups
 ```
@@ -160,6 +171,7 @@ GET    /communication/announcements
 GET    /reports/dashboard
 GET    /reports/attendance/monthly
 GET    /reports/donations/monthly
+GET    /reports/expenses/monthly
 GET    /reports/members/growth
 GET    /reports/export/members
 GET    /reports/export/donations
