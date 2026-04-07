@@ -30,10 +30,39 @@ STANDARD_EXPENSE_CATEGORIES = [
 ]
 
 
-def list_donations(db: Session, skip: int = 0, limit: int = 20, batch_id: UUID | None = None) -> tuple[list[Donation], int]:
-    query = db.query(Donation)
+def _apply_donation_filters(query, batch_id: UUID | None = None, fund_id: UUID | None = None, start_date: date | None = None, end_date: date | None = None):
     if batch_id:
         query = query.filter(Donation.batch_id == batch_id)
+    if fund_id:
+        query = query.filter(Donation.fund_id == fund_id)
+    if start_date:
+        query = query.filter(Donation.donation_date >= start_date)
+    if end_date:
+        query = query.filter(Donation.donation_date <= end_date)
+    return query
+
+
+def _apply_expense_filters(query, category_id: UUID | None = None, start_date: date | None = None, end_date: date | None = None):
+    if category_id:
+        query = query.filter(Expense.category_id == category_id)
+    if start_date:
+        query = query.filter(Expense.expense_date >= start_date)
+    if end_date:
+        query = query.filter(Expense.expense_date <= end_date)
+    return query
+
+
+def list_donations(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    batch_id: UUID | None = None,
+    fund_id: UUID | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> tuple[list[Donation], int]:
+    query = db.query(Donation)
+    query = _apply_donation_filters(query, batch_id=batch_id, fund_id=fund_id, start_date=start_date, end_date=end_date)
     total = query.count()
     rows = query.order_by(Donation.donation_date.desc(), Donation.created_at.desc()).offset(skip).limit(limit).all()
     return rows, total
@@ -235,8 +264,16 @@ def create_expense_category(db: Session, payload: ExpenseCategoryCreate) -> Expe
     return row
 
 
-def list_expenses(db: Session, skip: int = 0, limit: int = 20) -> tuple[list[Expense], int]:
+def list_expenses(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    category_id: UUID | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> tuple[list[Expense], int]:
     query = db.query(Expense)
+    query = _apply_expense_filters(query, category_id=category_id, start_date=start_date, end_date=end_date)
     total = query.count()
     rows = query.order_by(Expense.expense_date.desc(), Expense.created_at.desc()).offset(skip).limit(limit).all()
     return rows, total
@@ -284,6 +321,63 @@ def monthly_expense_report(db: Session, year: int | None = None) -> list[dict]:
         .all()
     )
     return [{"month": int(row.month), "value": float(row.total_amount)} for row in rows]
+
+
+def finance_summary(
+    db: Session,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    batch_id: UUID | None = None,
+    fund_id: UUID | None = None,
+    category_id: UUID | None = None,
+) -> dict:
+    donation_query = _apply_donation_filters(db.query(Donation), batch_id=batch_id, fund_id=fund_id, start_date=start_date, end_date=end_date)
+    expense_query = _apply_expense_filters(db.query(Expense), category_id=category_id, start_date=start_date, end_date=end_date)
+
+    income_total = donation_query.with_entities(func.coalesce(func.sum(Donation.amount), Decimal("0.00"))).scalar() or Decimal("0.00")
+    expense_total = expense_query.with_entities(func.coalesce(func.sum(Expense.amount), Decimal("0.00"))).scalar() or Decimal("0.00")
+
+    income_by_fund = (
+        _apply_donation_filters(
+            db.query(DonationFund.name, func.coalesce(func.sum(Donation.amount), Decimal("0.00")).label("total_amount"))
+            .join(Donation, Donation.fund_id == DonationFund.id),
+            batch_id=batch_id,
+            fund_id=fund_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        .group_by(DonationFund.name)
+        .order_by(func.coalesce(func.sum(Donation.amount), Decimal("0.00")).desc(), DonationFund.name.asc())
+        .all()
+    )
+
+    expenses_by_category = (
+        _apply_expense_filters(
+            db.query(ExpenseCategory.name, func.coalesce(func.sum(Expense.amount), Decimal("0.00")).label("total_amount"))
+            .join(Expense, Expense.category_id == ExpenseCategory.id),
+            category_id=category_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        .group_by(ExpenseCategory.name)
+        .order_by(func.coalesce(func.sum(Expense.amount), Decimal("0.00")).desc(), ExpenseCategory.name.asc())
+        .all()
+    )
+
+    return {
+        "filters": {
+            "start_date": start_date.isoformat() if start_date else None,
+            "end_date": end_date.isoformat() if end_date else None,
+            "batch_id": str(batch_id) if batch_id else None,
+            "fund_id": str(fund_id) if fund_id else None,
+            "category_id": str(category_id) if category_id else None,
+        },
+        "income_total": float(income_total),
+        "expense_total": float(expense_total),
+        "net_total": float(income_total - expense_total),
+        "income_by_fund": [{"name": row.name, "value": float(row.total_amount)} for row in income_by_fund],
+        "expenses_by_category": [{"name": row.name, "value": float(row.total_amount)} for row in expenses_by_category],
+    }
 
 
 def member_giving_summary(db: Session, member_id: UUID) -> dict:

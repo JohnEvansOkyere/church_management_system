@@ -42,6 +42,14 @@ export function useExpenseCategories() {
 }
 
 
+export function useFinanceSummary(params) {
+  return useQuery({
+    queryKey: ['finance-summary', params],
+    queryFn: () => donationsService.getSummary(params).then((r) => r.data),
+  });
+}
+
+
 export function useDonationAnnualReport(year) {
   return useQuery({
     queryKey: ['donation-annual-report', year],
@@ -59,6 +67,7 @@ export function useCreateDonation() {
       queryClient.invalidateQueries({ queryKey: ['donations'] });
       queryClient.invalidateQueries({ queryKey: ['donation-annual-report'] });
       queryClient.invalidateQueries({ queryKey: ['finance-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-summary'] });
       queryClient.invalidateQueries({ queryKey: ['reports-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['reports-donations-monthly'] });
     },
@@ -120,6 +129,7 @@ export function useCreateExpense() {
     mutationFn: (payload) => donationsService.createExpense(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['finance-summary'] });
       queryClient.invalidateQueries({ queryKey: ['reports-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['reports-expenses-monthly'] });
     },

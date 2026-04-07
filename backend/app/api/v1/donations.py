@@ -1,7 +1,10 @@
+import csv
+import io
 from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, require_roles
@@ -42,10 +45,21 @@ def list_donations(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     batch_id: UUID | None = Query(default=None),
+    fund_id: UUID | None = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles("superadmin", "finance")),
 ):
-    rows, total = donation_crud.list_donations(db, skip=skip, limit=limit, batch_id=batch_id)
+    rows, total = donation_crud.list_donations(
+        db,
+        skip=skip,
+        limit=limit,
+        batch_id=batch_id,
+        fund_id=fund_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
     page = (skip // limit) + 1
     return {"status": "success", "data": [serialize_donation(row) for row in rows], "total": total, "page": page, "limit": limit}
 
@@ -136,12 +150,77 @@ def monthly_report(
 def list_expenses(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
+    category_id: UUID | None = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles("superadmin", "finance")),
 ):
-    rows, total = donation_crud.list_expenses(db, skip=skip, limit=limit)
+    rows, total = donation_crud.list_expenses(
+        db,
+        skip=skip,
+        limit=limit,
+        category_id=category_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
     page = (skip // limit) + 1
     return {"status": "success", "data": [serialize_expense(row) for row in rows], "total": total, "page": page, "limit": limit}
+
+
+@router.get("/summary")
+def get_finance_summary(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    batch_id: UUID | None = Query(default=None),
+    fund_id: UUID | None = Query(default=None),
+    category_id: UUID | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin", "finance")),
+):
+    data = donation_crud.finance_summary(
+        db,
+        start_date=start_date,
+        end_date=end_date,
+        batch_id=batch_id,
+        fund_id=fund_id,
+        category_id=category_id,
+    )
+    return {"status": "success", "data": data}
+
+
+@router.get("/export/summary")
+def export_finance_summary(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    batch_id: UUID | None = Query(default=None),
+    fund_id: UUID | None = Query(default=None),
+    category_id: UUID | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin", "finance")),
+):
+    summary = donation_crud.finance_summary(
+        db,
+        start_date=start_date,
+        end_date=end_date,
+        batch_id=batch_id,
+        fund_id=fund_id,
+        category_id=category_id,
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["section", "name", "amount"])
+    writer.writerow(["totals", "income_total", summary["income_total"]])
+    writer.writerow(["totals", "expense_total", summary["expense_total"]])
+    writer.writerow(["totals", "net_total", summary["net_total"]])
+    for row in summary["income_by_fund"]:
+        writer.writerow(["income_by_fund", row["name"], row["value"]])
+    for row in summary["expenses_by_category"]:
+        writer.writerow(["expenses_by_category", row["name"], row["value"]])
+
+    headers = {"Content-Disposition": "attachment; filename=finance-summary.csv"}
+    return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers=headers)
 
 
 @router.post("/expenses", status_code=status.HTTP_201_CREATED)
