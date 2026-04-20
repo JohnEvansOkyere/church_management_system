@@ -1,3 +1,4 @@
+import { BarChart3, Download, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
@@ -11,22 +12,22 @@ import {
 } from '../../hooks/useReports';
 import { formatCurrency } from '../../utils/formatters';
 
-function SummaryList({ title, items, formatter = (value) => value, emptyLabel }) {
+function SummaryList({ title, items, formatter = (v) => v, emptyLabel }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-      <div className="mt-4 space-y-2">
-        {items.length === 0 ? (
-          <p className="text-sm text-slate-600">{emptyLabel}</p>
-        ) : (
-          items.map((item) => (
-            <div key={item.month || item.name} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-              <span className="font-medium text-slate-700">{item.name || item.month}</span>
+    <div className="panel p-5">
+      <p className="label-caps mb-3">{title}</p>
+      {items.length === 0 ? (
+        <p className="text-sm text-slate-500">{emptyLabel}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((item) => (
+            <div key={item.month || item.name} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm">
+              <span className="text-slate-600">{item.name || item.month}</span>
               <span className="font-bold text-slate-900">{formatter(item.value)}</span>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -38,14 +39,15 @@ export default function ReportsPage() {
   const expenseTrendQuery = useExpensesMonthlyReport();
   const membersTrendQuery = useMembersGrowthReport();
 
-  if (
+  const isLoading =
     dashboardQuery.isLoading ||
     attendanceTrendQuery.isLoading ||
     incomeTrendQuery.isLoading ||
     expenseTrendQuery.isLoading ||
-    membersTrendQuery.isLoading
-  ) {
-    return <LoadingSpinner label="Loading reports..." />;
+    membersTrendQuery.isLoading;
+
+  if (isLoading) {
+    return <LoadingSpinner label="Loading reports…" />;
   }
 
   const metrics = dashboardQuery.data?.data ?? {};
@@ -54,80 +56,88 @@ export default function ReportsPage() {
   const expenseTrend = expenseTrendQuery.data?.data ?? [];
   const membersTrend = membersTrendQuery.data?.data ?? [];
 
+  const netFlow = metrics.net_flow_this_month ?? 0;
+
   return (
-    <section>
+    <section className="space-y-5">
       <PageHeader
-        title="Reports"
-        subtitle="Review church performance across membership, attendance, income, and expenses from one reporting workspace."
+        title="Reports & Analytics"
+        subtitle="Review church performance across membership, attendance, income, and expenses."
+        action={
+          <div className="flex gap-2">
+            <button type="button" className="btn-outline">
+              <Download size={14} />
+              Members CSV
+            </button>
+            <button type="button" className="btn-outline">
+              <Download size={14} />
+              Finance Excel
+            </button>
+          </div>
+        }
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Members" value={metrics.total_members ?? 0} helper="Current member records" />
-        <StatCard label="Attendance Rate" value={`${metrics.attendance_percentage ?? 0}%`} helper="Latest tracked service" tone={(metrics.attendance_percentage ?? 0) >= 60 ? 'good' : 'warn'} />
-        <StatCard label="Income This Month" value={formatCurrency(metrics.donations_this_month ?? 0)} helper="Filtered from reports API" tone="good" />
-        <StatCard label="Expenses This Month" value={formatCurrency(metrics.expenses_this_month ?? 0)} helper="Current month spending" tone="warn" />
+      {/* Key metrics */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Members" value={metrics.total_members ?? 0} helper="All registered records" icon={Users} />
+        <StatCard label="Attendance Rate" value={`${metrics.attendance_percentage ?? 0}%`} helper="Latest tracked service" tone={(metrics.attendance_percentage ?? 0) >= 60 ? 'good' : 'warn'} icon={BarChart3} />
+        <StatCard label="Income This Month" value={formatCurrency(metrics.donations_this_month ?? 0)} tone="good" icon={TrendingUp} />
+        <StatCard label="Expenses This Month" value={formatCurrency(metrics.expenses_this_month ?? 0)} tone="warn" icon={TrendingDown} />
       </div>
 
-      <div className="mb-6 grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 p-6 text-white shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Finance Position</p>
-          <p className="mt-3 text-4xl font-extrabold">{formatCurrency(metrics.net_flow_this_month ?? 0)}</p>
-          <p className="mt-3 max-w-xl text-sm text-white/80">
-            Net flow for the month after subtracting expenses from total income.
+      {/* Finance position + watchlist */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className={`panel p-6 ${netFlow >= 0 ? 'bg-brand-900' : 'bg-accent-800'}`}>
+          <p className="label-caps text-white/60">Finance Position</p>
+          <p className="mt-3 text-5xl font-extrabold text-white">{formatCurrency(netFlow)}</p>
+          <p className="mt-3 text-sm text-white/70">
+            Net monthly flow — income minus expenses for the current month.
           </p>
+          <div className="mt-5 grid grid-cols-2 gap-4">
+            <div className="rounded-2xl bg-white/10 p-3">
+              <p className="text-xs text-white/60">Income MTD</p>
+              <p className="mt-1 text-lg font-bold text-white">{formatCurrency(metrics.donations_this_month ?? 0)}</p>
+            </div>
+            <div className="rounded-2xl bg-white/10 p-3">
+              <p className="text-xs text-white/60">Expenses MTD</p>
+              <p className="mt-1 text-lg font-bold text-white">{formatCurrency(metrics.expenses_this_month ?? 0)}</p>
+            </div>
+          </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Operational Watchlist</p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="text-sm text-slate-500">Low Attendance Members</p>
-              <p className="mt-1 text-3xl font-extrabold text-slate-900">{metrics.low_attendance_members ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">New Members This Month</p>
-              <p className="mt-1 text-3xl font-extrabold text-slate-900">{metrics.new_members_this_month ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Latest Attendance Count</p>
-              <p className="mt-1 text-3xl font-extrabold text-slate-900">{metrics.attendance_last_sunday ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Upcoming Events</p>
-              <p className="mt-1 text-3xl font-extrabold text-slate-900">{metrics.upcoming_events ?? 0}</p>
-            </div>
+
+        <div className="panel p-6">
+          <p className="label-caps mb-4">Operational Watchlist</p>
+          <div className="grid grid-cols-2 gap-5">
+            {[
+              { label: 'Low Attendance Members', value: metrics.low_attendance_members ?? 0 },
+              { label: 'New Members This Month', value: metrics.new_members_this_month ?? 0 },
+              { label: 'Last Service Attendance', value: metrics.attendance_last_sunday ?? 0 },
+              { label: 'Upcoming Events', value: metrics.upcoming_events ?? 0 },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-xs text-slate-500">{label}</p>
+                <p className="mt-1 text-3xl font-extrabold text-slate-900">{value}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="mb-6 grid gap-4 xl:grid-cols-2">
+      {/* Charts */}
+      <div className="grid gap-4 lg:grid-cols-2">
         <TrendBars title="Monthly Attendance" data={attendanceTrend} color="bg-brand-700" />
-        <TrendBars title="Member Growth" data={membersTrend} color="bg-emerald-600" />
+        <TrendBars title="Member Growth" data={membersTrend} color="bg-success-700" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <TrendBars title="Monthly Income" data={incomeTrend} color="bg-church-700" />
+        <TrendBars title="Monthly Expenses" data={expenseTrend} color="bg-accent-700" />
       </div>
 
-      <div className="mb-6 grid gap-4 xl:grid-cols-2">
-        <TrendBars title="Monthly Income" data={incomeTrend} color="bg-cyan-700" />
-        <TrendBars title="Monthly Expenses" data={expenseTrend} color="bg-red-600" />
-      </div>
-
+      {/* Trend tables */}
       <div className="grid gap-4 xl:grid-cols-3">
-        <SummaryList
-          title="Attendance Trend"
-          items={attendanceTrend}
-          formatter={(value) => `${value} present`}
-          emptyLabel="No attendance trend data yet."
-        />
-        <SummaryList
-          title="Income Trend"
-          items={incomeTrend}
-          formatter={(value) => formatCurrency(value)}
-          emptyLabel="No income trend data yet."
-        />
-        <SummaryList
-          title="Expense Trend"
-          items={expenseTrend}
-          formatter={(value) => formatCurrency(value)}
-          emptyLabel="No expense trend data yet."
-        />
+        <SummaryList title="Attendance Trend" items={attendanceTrend} formatter={(v) => `${v} present`} emptyLabel="No attendance trend data yet." />
+        <SummaryList title="Income Trend" items={incomeTrend} formatter={(v) => formatCurrency(v)} emptyLabel="No income trend data yet." />
+        <SummaryList title="Expense Trend" items={expenseTrend} formatter={(v) => formatCurrency(v)} emptyLabel="No expense trend data yet." />
       </div>
     </section>
   );

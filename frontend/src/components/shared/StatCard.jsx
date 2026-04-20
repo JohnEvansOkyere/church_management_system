@@ -1,16 +1,46 @@
-export default function StatCard({ label, value, helper, tone = 'default' }) {
-  const toneClass =
-    tone === 'good'
-      ? 'from-emerald-50 to-white ring-emerald-200'
-      : tone === 'warn'
-        ? 'from-amber-50 to-white ring-amber-200'
-        : 'from-sky-50 to-white ring-sky-200';
+/**
+ * tone: 'default' | 'good' | 'warn' | 'danger'
+ * icon: Lucide icon component (optional)
+ */
+
+const toneConfig = {
+  default: {
+    bg: 'bg-brand-50',
+    iconColor: 'text-brand-700',
+    valueColor: 'text-slate-900',
+  },
+  good: {
+    bg: 'bg-success-50',
+    iconColor: 'text-success-700',
+    valueColor: 'text-success-700',
+  },
+  warn: {
+    bg: 'bg-church-50',
+    iconColor: 'text-church-700',
+    valueColor: 'text-church-700',
+  },
+  danger: {
+    bg: 'bg-accent-50',
+    iconColor: 'text-accent-700',
+    valueColor: 'text-accent-700',
+  },
+};
+
+export default function StatCard({ label, value, helper, tone = 'default', icon: Icon }) {
+  const config = toneConfig[tone] ?? toneConfig.default;
 
   return (
-    <article className={`rounded-2xl bg-gradient-to-br ${toneClass} p-4 shadow-sm ring-1`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-extrabold text-slate-900">{value}</p>
-      {helper ? <p className="mt-1 text-xs text-slate-600">{helper}</p> : null}
+    <article className="panel flex items-start gap-4 p-5">
+      {Icon && (
+        <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${config.bg}`}>
+          <Icon size={20} className={config.iconColor} strokeWidth={2} />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+        <p className={`mt-1 text-2xl font-extrabold leading-none ${config.valueColor}`}>{value}</p>
+        {helper ? <p className="mt-1.5 truncate text-xs text-slate-400">{helper}</p> : null}
+      </div>
     </article>
   );
 }

@@ -1,9 +1,26 @@
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart2,
+  Banknote,
+  CheckSquare,
+  TrendingDown,
+  TrendingUp,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
-import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
 import TrendBars from '../../components/shared/TrendBars';
-import { useAttendanceMonthlyReport, useDashboardReport, useDonationsMonthlyReport, useExpensesMonthlyReport, useMembersGrowthReport } from '../../hooks/useReports';
+import {
+  useAttendanceMonthlyReport,
+  useDashboardReport,
+  useDonationsMonthlyReport,
+  useExpensesMonthlyReport,
+  useMembersGrowthReport,
+} from '../../hooks/useReports';
+import { useAuthStore } from '../../store/authStore';
 import { formatCurrency } from '../../utils/formatters';
 
 const quickActions = [
@@ -12,27 +29,61 @@ const quickActions = [
     detail: 'Review member records and register new people.',
     to: '/members',
     cta: 'Open Members',
+    iconBg: 'bg-brand-50',
+    icon: Users,
+    iconColor: 'text-brand-700',
   },
   {
     title: 'Attendance Desk',
     detail: 'Run quick service check-in and session tracking.',
     to: '/attendance',
     cta: 'Open Attendance',
+    iconBg: 'bg-success-50',
+    icon: CheckSquare,
+    iconColor: 'text-success-700',
   },
   {
     title: 'Finance Center',
-    detail: 'Record giving and review fund totals.',
+    detail: 'Record giving, expenses, and review fund totals.',
     to: '/donations',
     cta: 'Open Finance',
+    iconBg: 'bg-church-50',
+    icon: Banknote,
+    iconColor: 'text-church-700',
   },
 ];
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function ProgressBar({ label, value, max, color = 'bg-brand-700' }) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between text-sm">
+        <span className="font-medium text-slate-700">{label}</span>
+        <span className="font-bold text-slate-900">{pct}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
+  const { user } = useAuthStore();
   const dashboardQuery = useDashboardReport();
   const attendanceTrendQuery = useAttendanceMonthlyReport();
   const donationsTrendQuery = useDonationsMonthlyReport();
   const expensesTrendQuery = useExpensesMonthlyReport();
   const membersTrendQuery = useMembersGrowthReport();
+
+  const today = new Intl.DateTimeFormat('en-GH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());
 
   if (dashboardQuery.isLoading) {
     return <LoadingSpinner label="Loading dashboard metrics..." />;
@@ -44,49 +95,153 @@ export default function DashboardPage() {
   const expensesTrend = expensesTrendQuery.data?.data ?? [];
   const membersTrend = membersTrendQuery.data?.data ?? [];
 
-  return (
-    <section>
-      <PageHeader title="Dashboard" subtitle="Live operational performance across members and attendance." />
+  const netFlow = (metrics.donations_this_month ?? 0) - (metrics.expenses_this_month ?? 0);
 
-      <div className="panel mb-6 overflow-hidden p-6">
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-700">Live Snapshot</p>
-            <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Church operations at a glance</h2>
-            <p className="mt-3 max-w-2xl text-sm text-slate-600">
-              Metrics update from your backend reports endpoints. Attendance and member growth trends are shown below.
-            </p>
+  return (
+    <section className="space-y-6">
+
+      {/* Greeting header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900">
+            {getGreeting()}{user?.email ? ` 👋` : ''}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">{today} — Here's what's happening at Living Springs.</p>
+        </div>
+      </div>
+
+      {/* Stat cards row */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard
+          label="Total Members"
+          value={metrics.total_members ?? 0}
+          helper="All registered records"
+          icon={Users}
+        />
+        <StatCard
+          label="New This Month"
+          value={metrics.new_members_this_month ?? 0}
+          helper="Joined this month"
+          tone="good"
+          icon={UserPlus}
+        />
+        <StatCard
+          label="Last Service"
+          value={metrics.attendance_last_sunday ?? 0}
+          helper={`${metrics.attendance_percentage ?? 0}% attendance rate`}
+          icon={BarChart2}
+        />
+        <StatCard
+          label="Income (MTD)"
+          value={formatCurrency(metrics.donations_this_month ?? 0)}
+          helper="Month to date giving"
+          tone="good"
+          icon={TrendingUp}
+        />
+        <StatCard
+          label="Expenses (MTD)"
+          value={formatCurrency(metrics.expenses_this_month ?? 0)}
+          helper="Month to date spending"
+          tone="warn"
+          icon={TrendingDown}
+        />
+      </div>
+
+      {/* Live snapshot + progress bars */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="panel p-6">
+          <p className="label-caps mb-1">Live Snapshot</p>
+          <h2 className="text-lg font-bold text-slate-900">Church operations at a glance</h2>
+          <div className="mt-5 space-y-4">
+            <ProgressBar
+              label="Attendance Rate"
+              value={metrics.attendance_percentage ?? 0}
+              max={100}
+              color="bg-brand-700"
+            />
+            <ProgressBar
+              label="New Members This Month"
+              value={metrics.new_members_this_month ?? 0}
+              max={Math.max(metrics.new_members_this_month ?? 0, 20)}
+              color="bg-success-700"
+            />
+            <ProgressBar
+              label="Follow-Up Members"
+              value={metrics.low_attendance_members ?? 0}
+              max={Math.max(metrics.total_members ?? 1, 1)}
+              color="bg-church-700"
+            />
           </div>
-          <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-cyan-700 p-5 text-white">
-            <p className="text-xs uppercase tracking-[0.16em] text-white/80">Current Attendance</p>
-            <p className="mt-2 text-3xl font-extrabold">{metrics.attendance_percentage ?? 0}%</p>
-            <p className="mt-3 text-sm text-white/90">{metrics.attendance_last_sunday ?? 0} present in latest tracked service.</p>
+        </div>
+
+        {/* Net flow hero card */}
+        <div className="panel overflow-hidden p-6">
+          <p className="label-caps mb-1">Monthly Finance Position</p>
+          <h2 className="text-lg font-bold text-slate-900">Net cash flow for this month</h2>
+          <div className="mt-5 grid grid-cols-2 gap-4">
+            <div className="rounded-2xl bg-success-50 p-4">
+              <p className="text-xs font-semibold text-success-700">Income</p>
+              <p className="mt-1 text-xl font-extrabold text-success-700">
+                {formatCurrency(metrics.donations_this_month ?? 0)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-accent-50 p-4">
+              <p className="text-xs font-semibold text-accent-700">Expenses</p>
+              <p className="mt-1 text-xl font-extrabold text-accent-700">
+                {formatCurrency(metrics.expenses_this_month ?? 0)}
+              </p>
+            </div>
+          </div>
+          <div className={`mt-4 rounded-2xl p-4 ${netFlow >= 0 ? 'bg-brand-50' : 'bg-accent-50'}`}>
+            <p className={`text-xs font-semibold ${netFlow >= 0 ? 'text-brand-700' : 'text-accent-700'}`}>Net Flow</p>
+            <p className={`mt-1 text-3xl font-extrabold ${netFlow >= 0 ? 'text-brand-700' : 'text-accent-700'}`}>
+              {formatCurrency(netFlow)}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Total Members" value={metrics.total_members ?? 0} helper="All member records" />
-        <StatCard label="New This Month" value={metrics.new_members_this_month ?? 0} helper="Joined this month" tone="good" />
-        <StatCard label="Low Attendance" value={metrics.low_attendance_members ?? 0} helper="Needs follow-up" tone="warn" />
-        <StatCard label="Income This Month" value={formatCurrency(metrics.donations_this_month ?? 0)} helper="Current month giving" tone="good" />
-        <StatCard label="Expenses This Month" value={formatCurrency(metrics.expenses_this_month ?? 0)} helper="Current month spending" tone="warn" />
+      {/* Trend charts row */}
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+        <TrendBars title="Monthly Attendance" data={attendanceTrend} color="bg-brand-700" />
+        <TrendBars title="Monthly Income" data={donationsTrend} color="bg-success-700" />
+        <TrendBars title="Monthly Expenses" data={expensesTrend} color="bg-accent-700" />
+        <TrendBars title="Member Growth" data={membersTrend} color="bg-church-700" />
       </div>
 
-      <div className="mb-6 grid gap-4 xl:grid-cols-4">
-        <TrendBars title="Monthly Attendance (Present)" data={attendanceTrend} color="bg-brand-700" />
-        <TrendBars title="Monthly Income" data={donationsTrend} color="bg-cyan-700" />
-        <TrendBars title="Monthly Expenses" data={expensesTrend} color="bg-red-600" />
-        <TrendBars title="Member Growth (Cumulative)" data={membersTrend} color="bg-emerald-600" />
-      </div>
+      {/* Pastoral alert */}
+      {(metrics.low_attendance_members ?? 0) > 0 && (
+        <div className="panel flex items-start gap-4 border-l-4 border-church-700 p-5">
+          <AlertTriangle size={20} className="mt-0.5 flex-shrink-0 text-church-700" />
+          <div className="flex-1">
+            <p className="font-semibold text-slate-900">
+              {metrics.low_attendance_members} member{metrics.low_attendance_members !== 1 ? 's' : ''} need pastoral follow-up
+            </p>
+            <p className="mt-0.5 text-sm text-slate-500">
+              These members haven't been seen in 30+ days. Consider reaching out.
+            </p>
+          </div>
+          <Link to="/members" className="flex-shrink-0 text-sm font-semibold text-brand-700 hover:text-brand-800">
+            View →
+          </Link>
+        </div>
+      )}
 
+      {/* Quick actions */}
       <div className="grid gap-4 lg:grid-cols-3">
         {quickActions.map((action) => (
-          <article key={action.title} className="panel p-5">
-            <h3 className="text-lg font-bold text-slate-900">{action.title}</h3>
-            <p className="mt-2 text-sm text-slate-600">{action.detail}</p>
-            <Link to={action.to} className="mt-4 inline-flex text-sm font-semibold text-brand-700 hover:text-brand-800">
-              {action.cta} {'->'}
+          <article key={action.title} className="panel group p-5 transition hover:shadow-md">
+            <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl ${action.iconBg}`}>
+              <action.icon size={22} className={action.iconColor} />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">{action.title}</h3>
+            <p className="mt-1.5 text-sm text-slate-500">{action.detail}</p>
+            <Link
+              to={action.to}
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800"
+            >
+              {action.cta}
+              <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
             </Link>
           </article>
         ))}

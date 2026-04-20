@@ -1,0 +1,35 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy: Dashboard → New → Blueprint → connect this repo (or paste this file).
+#
+# After first deploy:
+# 1. Set DATABASE_URL (Render PostgreSQL or Supabase).
+# 2. Set SECRET_KEY (long random string).
+# 3. Set CORS_ORIGINS to your Vercel URL(s), comma-separated, e.g.:
+#    https://your-app.vercel.app,https://your-app-git-main-yourteam.vercel.app
+# 4. Run migrations if preDeployCommand did not run: render shell → cd backend → alembic upgrade head
+
+services:
+  - type: web
+    name: living-spring-api
+    runtime: python
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Migrations before traffic switches to new release (requires DB env vars on Render)
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"

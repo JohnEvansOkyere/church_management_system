@@ -1,55 +1,129 @@
-import { NavLink } from 'react-router-dom';
+import {
+  BarChart3,
+  Banknote,
+  CalendarDays,
+  CheckSquare,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  Users,
+  UsersRound,
+} from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
 
-const primaryItems = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/members', label: 'Members' },
-  { to: '/attendance', label: 'Attendance' },
+const navSections = [
+  {
+    title: 'Core',
+    items: [
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/members', label: 'Members', icon: Users },
+      { to: '/attendance', label: 'Attendance', icon: CheckSquare },
+    ],
+  },
+  {
+    title: 'Ministry',
+    items: [
+      { to: '/donations', label: 'Finance', icon: Banknote },
+      { to: '/groups', label: 'Groups', icon: UsersRound },
+      { to: '/events', label: 'Events', icon: CalendarDays },
+      { to: '/communication', label: 'Communication', icon: MessageSquare },
+      { to: '/reports', label: 'Reports', icon: BarChart3 },
+    ],
+  },
 ];
 
-const growthItems = [
-  { to: '/donations', label: 'Finance' },
-  { to: '/groups', label: 'Groups' },
-  { to: '/events', label: 'Events' },
-  { to: '/communication', label: 'Communication' },
-  { to: '/reports', label: 'Reports' },
-];
+const ROLE_LABELS = {
+  superadmin: 'Super Admin',
+  secretary: 'Secretary',
+  finance: 'Finance Officer',
+  group_leader: 'Group Leader',
+  member: 'Member',
+};
 
-function NavSection({ title, items }) {
-  return (
-    <div className="mt-6">
-      <p className="px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{title}</p>
-      <div className="mt-2 space-y-1">
-        {items.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `block rounded-xl px-3 py-2.5 text-sm transition ${
-                isActive
-                  ? 'bg-brand-700 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </div>
-    </div>
-  );
+function getInitials(user) {
+  if (!user) return '?';
+  const email = user.email || '';
+  const parts = email.split('@')[0].split('.');
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return email.slice(0, 2).toUpperCase();
 }
 
 export default function Sidebar() {
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+
+  function onLogout() {
+    logout();
+    navigate('/login');
+  }
+
   return (
-    <aside className="panel w-full p-4 md:sticky md:top-4 md:h-[calc(100vh-2rem)] md:w-72 md:self-start">
-      <div className="rounded-xl bg-gradient-to-r from-brand-700 to-cyan-700 px-4 py-4 text-white">
-        <p className="text-xs uppercase tracking-[0.14em] text-white/80">Living Spring</p>
-        <h2 className="mt-1 text-lg font-extrabold">Church Management</h2>
-        <p className="mt-1 text-xs text-white/80">Operations Console</p>
+    <aside className="flex h-screen w-64 flex-col border-r border-slate-200 bg-white">
+      {/* Logo / Church identity */}
+      <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+        <img src="/logo.jpg" alt="Living Springs Church" className="h-10 w-10 rounded-xl object-cover" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold leading-tight text-slate-900">Living Springs</p>
+          <p className="truncate text-[11px] text-slate-500">International Church</p>
+        </div>
       </div>
 
-      <NavSection title="Core" items={primaryItems} />
-      <NavSection title="Growth" items={growthItems} />
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        {navSections.map((section) => (
+          <div key={section.title} className="mb-5">
+            <p className="label-caps mb-2 px-2">{section.title}</p>
+            <div className="space-y-0.5">
+              {section.items.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-brand-700 text-white'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Icon
+                        size={17}
+                        className={isActive ? 'text-white' : 'text-slate-400'}
+                        strokeWidth={isActive ? 2.5 : 2}
+                      />
+                      {label}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* User profile + logout */}
+      <div className="border-t border-slate-100 px-3 py-3">
+        <div className="mb-2 flex items-center gap-3 rounded-xl px-2 py-2">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">
+            {getInitials(user)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-slate-900">{user?.email ?? 'User'}</p>
+            <p className="truncate text-[11px] text-slate-500">{ROLE_LABELS[user?.role] ?? user?.role ?? 'Staff'}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-accent-50 hover:text-accent-700"
+        >
+          <LogOut size={16} className="text-slate-400" />
+          Sign out
+        </button>
+      </div>
     </aside>
   );
 }

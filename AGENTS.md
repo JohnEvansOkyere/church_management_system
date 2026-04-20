@@ -11,6 +11,7 @@ Before writing any code, read ALL instruction files in the `docs/` folder in thi
 5. `docs/FRONTEND.md` — React + Tailwind frontend conventions
 6. `docs/MODULES.md` — All feature modules and their requirements
 7. `docs/API.md` — API design conventions and endpoint patterns
+8. `docs/DESIGN.md` — **UI/UX design system, colors, components, and page specs (read before touching any frontend file)**
 
 ---
 

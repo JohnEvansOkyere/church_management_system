@@ -1,5 +1,7 @@
+import { AlertTriangle, Download, Filter, Search, UserCheck, UserPlus, Users, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Badge from '../../components/shared/Badge';
 import DataTable from '../../components/shared/DataTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
@@ -12,6 +14,13 @@ import { formatDate } from '../../utils/formatters';
 import { resolvePhotoUrl } from '../../utils/media';
 
 const PAGE_SIZE = 20;
+
+const STATUS_BADGE_MAP = {
+  active: 'active',
+  inactive: 'inactive',
+  visitor: 'visitor',
+  new_convert: 'new_convert',
+};
 
 export default function MembersPage() {
   const [search, setSearch] = useState('');
@@ -34,11 +43,8 @@ export default function MembersPage() {
 
   async function onStatusChange(memberId, nextStatus) {
     setMessage('');
-    await updateMutation.mutateAsync({
-      id: memberId,
-      payload: { membership_status: nextStatus },
-    });
-    setMessage('Member status updated successfully.');
+    await updateMutation.mutateAsync({ id: memberId, payload: { membership_status: nextStatus } });
+    setMessage('Member status updated.');
   }
 
   const columns = useMemo(
@@ -52,55 +58,54 @@ export default function MembersPage() {
               <img
                 src={resolvePhotoUrl(row.photo_url)}
                 alt={`${row.first_name} ${row.last_name}`}
-                className="h-10 w-10 rounded-full object-cover ring-1 ring-slate-200"
+                className="h-9 w-9 rounded-full object-cover ring-1 ring-slate-200"
               />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">
                 {(row.first_name?.[0] || '')}
                 {(row.last_name?.[0] || '')}
               </div>
             )}
-            <Link to={`/members/${row.id}`} className="font-semibold text-brand-700 hover:text-brand-800">
+            <Link
+              to={`/members/${row.id}`}
+              className="font-semibold text-brand-700 hover:text-brand-800 hover:underline"
+            >
               {row.first_name} {row.last_name}
             </Link>
           </div>
         ),
       },
       { key: 'phone', label: 'Phone' },
-      { key: 'email', label: 'Email' },
+      { key: 'email', label: 'Email', render: (row) => row.email ?? <span className="text-slate-300">—</span> },
       {
         key: 'membership_status',
         label: 'Status',
-        render: (row) => (
+        render: (row) =>
           canEditStatus ? (
             <select
               value={row.membership_status || 'active'}
               onChange={(e) => onStatusChange(row.id, e.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold uppercase text-slate-700"
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:border-brand-700 focus:outline-none focus:ring-1 focus:ring-brand-100"
             >
               {MEMBERSHIP_STATUS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
+                <option key={item} value={item}>{item}</option>
               ))}
             </select>
           ) : (
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold uppercase text-slate-700">
+            <Badge variant={STATUS_BADGE_MAP[row.membership_status] ?? 'default'}>
               {row.membership_status || 'unknown'}
-            </span>
-          )
-        ),
+            </Badge>
+          ),
       },
-      { key: 'date_of_birth', label: 'Date of Birth', render: (row) => formatDate(row.date_of_birth) },
-      { key: 'date_joined', label: 'Date Joined', render: (row) => formatDate(row.date_joined) },
+      { key: 'date_joined', label: 'Joined', render: (row) => formatDate(row.date_joined) },
       {
         key: 'low_attendance',
         label: 'Risk',
         render: (row) =>
           row.low_attendance ? (
-            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase text-amber-700">Follow Up</span>
+            <Badge variant="followup">Follow Up</Badge>
           ) : (
-            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase text-emerald-700">Stable</span>
+            <Badge variant="stable">Stable</Badge>
           ),
       },
     ],
@@ -122,80 +127,100 @@ export default function MembersPage() {
     setMessage('CSV export downloaded.');
   }
 
+  const hasFilters = search || status;
+
   return (
-    <section>
+    <section className="space-y-5">
       <PageHeader
         title="Members"
-        subtitle="Browse and manage member records."
+        subtitle="Browse, search, and manage your congregation's member records."
         action={
           <div className="flex gap-2">
-            <Link to="/members/register" className="btn-primary">Register Member</Link>
-            <button type="button" onClick={onExport} className="btn-primary">Export CSV</button>
+            <Link to="/members/register" className="btn-primary">
+              <UserPlus size={15} />
+              Register Member
+            </Link>
+            <button type="button" onClick={onExport} className="btn-outline">
+              <Download size={15} />
+              Export CSV
+            </button>
           </div>
         }
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Visible Members" value={total} helper="Current filtered list" />
-        <StatCard label="Active" value={activeCount} helper="Membership status active" tone="good" />
-        <StatCard label="Pastoral Follow-up" value={lowAttendanceCount} helper="Low attendance members" tone="warn" />
-        <StatCard label="Page" value={`${page}/${totalPages}`} helper={`${rows.length} records shown`} />
+      {/* Stat cards */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Members" value={total} helper="In current filter" icon={Users} />
+        <StatCard label="Active" value={activeCount} helper="Membership status active" tone="good" icon={UserCheck} />
+        <StatCard label="Pastoral Follow-Up" value={lowAttendanceCount} helper="Low attendance flagged" tone="warn" icon={AlertTriangle} />
+        <StatCard label="Page" value={`${page} / ${totalPages}`} helper={`${rows.length} shown per page`} />
       </div>
 
-      <div className="panel mb-6 p-4">
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Filter Members</p>
-        <div className="grid gap-3 md:grid-cols-3">
-          <input
-            placeholder="Search by name, phone, email"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="field"
-          />
+      {/* Filter bar */}
+      <div className="panel p-4">
+        <div className="flex items-center gap-2">
+          <Filter size={14} className="flex-shrink-0 text-slate-400" />
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Filter Members</p>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="relative">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              placeholder="Search by name, phone, or email"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="field pl-9"
+            />
+          </div>
           <select
             value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
             className="field"
           >
-            <option value="">All status</option>
+            <option value="">All statuses</option>
             {MEMBERSHIP_STATUS.map((item) => (
               <option key={item} value={item}>{item}</option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={() => {
-              setSearch('');
-              setStatus('');
-              setPage(1);
-            }}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Clear Filters
-          </button>
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setStatus(''); setPage(1); }}
+              className="btn-outline gap-1.5"
+            >
+              <X size={14} />
+              Clear Filters
+            </button>
+          )}
         </div>
       </div>
 
-      {message ? <p className="mb-3 text-sm text-emerald-700">{message}</p> : null}
+      {/* Inline success message */}
+      {message && (
+        <p className="rounded-xl bg-success-50 px-4 py-2.5 text-sm font-medium text-success-700 ring-1 ring-success-100">
+          {message}
+        </p>
+      )}
 
+      {/* Table */}
       {membersQuery.isLoading ? (
         <LoadingSpinner label="Loading members..." />
       ) : (
         <>
           <DataTable columns={columns} rows={rows} emptyLabel="No members found" />
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-slate-600">Showing {rows.length} of {total} members</p>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">
+              Showing <span className="font-semibold text-slate-700">{rows.length}</span> of{' '}
+              <span className="font-semibold text-slate-700">{total}</span> members
+            </p>
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+                className="btn-outline disabled:opacity-40"
               >
                 Previous
               </button>
@@ -203,7 +228,7 @@ export default function MembersPage() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+                className="btn-outline disabled:opacity-40"
               >
                 Next
               </button>
