@@ -5,7 +5,7 @@ const mobileItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/members', label: 'Members', icon: Users },
   { to: '/attendance', label: 'Attendance', icon: CheckSquare },
-  { to: '/donations', label: 'Finance', icon: Banknote },
+  { to: '/finance', label: 'Finance', icon: Banknote },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
 ];
 

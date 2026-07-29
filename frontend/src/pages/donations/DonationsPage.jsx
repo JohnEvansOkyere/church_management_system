@@ -1,8 +1,8 @@
 import { Banknote, CheckCircle2, FolderOpen, Receipt, TrendingDown, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import DataTable from '../../components/shared/DataTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
-import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
 import {
   useBootstrapDonationFunds,
@@ -93,10 +93,9 @@ function BreakdownList({ items, loading, emptyLabel }) {
   );
 }
 
-export default function DonationsPage() {
+export default function DonationsPage({ view = 'overview' }) {
   const [activeAction, setActiveAction] = useState('collection');
   const [selectedBatchId, setSelectedBatchId] = useState('');
-  const [ledgerView, setLedgerView] = useState('income');
   const [message, setMessage] = useState('');
   const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState({ start_date: '', end_date: '', fund_id: '', category_id: '' });
@@ -133,6 +132,14 @@ export default function DonationsPage() {
   const annual = annualReportQuery.data?.data;
   const dashboard = dashboardQuery.data?.data ?? {};
   const summary = summaryQuery.data?.data ?? {};
+
+  const isOverview = view === 'overview';
+  const isGiving = view === 'giving';
+  const isExpenses = view === 'expenses';
+  const isBatches = view === 'batches';
+  const isFunds = view === 'funds';
+  const isReports = view === 'reports';
+  const selectedAction = isExpenses ? 'expense' : activeAction === 'expense' ? 'collection' : activeAction;
 
   const activeBatch = batches.find((b) => b.id === (donationForm.batch_id || selectedBatchId)) ?? null;
   const titheFund = funds.find((f) => String(f.code).toLowerCase() === 'tithe') ?? null;
@@ -196,10 +203,10 @@ export default function DonationsPage() {
     event.preventDefault();
     setMessage('');
     await createDonationMutation.mutateAsync({ ...donationForm, member_id: donationForm.member_id || null, batch_id: donationForm.batch_id || null, amount: Number(donationForm.amount), payment_method: donationForm.payment_method || null, reference: donationForm.reference || null, notes: donationForm.notes || null });
-    const label = activeAction === 'tithe'
+    const label = selectedAction === 'tithe'
       ? `Saved ${formatCurrency(donationForm.amount || 0)} as tithe.`
       : `Saved ${formatCurrency(donationForm.amount || 0)} as ${selectedCollectionFund?.name || 'church collection'}.`;
-    setDonationForm((prev) => ({ ...defaultDonationForm(), batch_id: prev.batch_id, donation_date: prev.donation_date, fund_id: activeAction === 'tithe' && titheFund ? titheFund.id : '' }));
+    setDonationForm((prev) => ({ ...defaultDonationForm(), batch_id: prev.batch_id, donation_date: prev.donation_date, fund_id: selectedAction === 'tithe' && titheFund ? titheFund.id : '' }));
     setMessage(label);
   }
 
@@ -263,23 +270,33 @@ export default function DonationsPage() {
     { key: 'payment_method', label: 'Method' },
   ];
 
-  return (
-    <section className="space-y-5">
-      <PageHeader
-        title="Finance"
-        subtitle="Record giving, expenses, and review fund totals. Pick one task and complete it."
-      />
+  const batchColumns = [
+    { key: 'title', label: 'Batch' },
+    { key: 'service_date', label: 'Service Date', render: (row) => formatDate(row.service_date) },
+    { key: 'service_type', label: 'Service Type' },
+    { key: 'total_amount', label: 'Collected', render: (row) => formatCurrency(row.total_amount ?? 0) },
+    { key: 'transaction_count', label: 'Entries' },
+    { key: 'is_closed', label: 'Status', render: (row) => row.is_closed ? 'Closed' : 'Open' },
+  ];
 
-      {/* Top stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  return (
+    <div className="space-y-5">
+      {message && (
+        <p className="rounded-xl bg-success-50 px-4 py-3 text-sm font-medium text-success-700 ring-1 ring-success-100">
+          {message}
+        </p>
+      )}
+
+      {/* Overview keeps the high-level position and next actions together. */}
+      {isOverview && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Income This Month" value={formatCurrency(dashboard.donations_this_month ?? 0)} tone="good" icon={TrendingUp} />
         <StatCard label="Expenses This Month" value={formatCurrency(dashboard.expenses_this_month ?? 0)} tone="warn" icon={TrendingDown} />
         <StatCard label="Net Flow" value={formatCurrency(dashboard.net_flow_this_month ?? 0)} tone={(dashboard.net_flow_this_month ?? 0) >= 0 ? 'good' : 'danger'} />
         <StatCard label="Annual Giving" value={formatCurrency(annual?.total ?? 0)} helper={`${currentYear} total`} />
-      </div>
+      </div>}
 
       {/* Readiness checklist */}
-      <div className="panel p-5">
+      {isOverview && <div className="panel p-5">
         <SectionLabel>Today's Checklist</SectionLabel>
         <div className="grid gap-3 md:grid-cols-3">
           {todayChecklist.map(({ label, done, icon: Icon }) => (
@@ -294,41 +311,77 @@ export default function DonationsPage() {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* Action selector */}
-      <div className="panel p-5">
+      {isOverview && <div className="panel p-5">
         <SectionLabel>What do you want to record?</SectionLabel>
         <div className="grid gap-4 lg:grid-cols-3">
           {ACTION_CARDS.map((card) => {
-            const isActive = activeAction === card.id;
+            const target = card.id === 'expense' ? '/finance/expenses' : '/finance/giving';
             return (
-              <button
+              <Link
                 key={card.id}
-                type="button"
-                onClick={() => switchAction(card.id)}
-                className={`rounded-2xl border p-5 text-left transition ${isActive ? 'border-brand-300 bg-brand-50 ring-2 ring-brand-200' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
+                to={target}
+                className="rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:border-brand-300 hover:bg-brand-50"
               >
                 <div className="flex items-center justify-between gap-3 mb-3">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${isActive ? 'bg-brand-700' : 'bg-slate-100'}`}>
-                    <card.icon size={18} className={isActive ? 'text-white' : 'text-slate-500'} />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100">
+                    <card.icon size={18} className="text-slate-500" />
                   </div>
-                  {isActive && <span className="rounded-full bg-brand-700 px-2.5 py-0.5 text-xs font-bold text-white">Active</span>}
                 </div>
                 <p className="font-bold text-slate-900">{card.label}</p>
                 <p className="mt-1 text-xs text-slate-500">{card.description}</p>
-              </button>
+                <p className="mt-4 text-xs font-bold text-brand-700">Open page →</p>
+              </Link>
             );
           })}
         </div>
-      </div>
+      </div>}
+
+      {isOverview && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Link to="/finance/reports" className="panel p-5 transition hover:ring-2 hover:ring-brand-200">
+            <p className="text-sm font-bold text-slate-900">Review financial reports</p>
+            <p className="mt-1 text-sm text-slate-500">Filter income and expenses, compare categories, and export a CSV.</p>
+            <p className="mt-4 text-xs font-bold text-brand-700">Open reports →</p>
+          </Link>
+          <Link to="/finance/batches" className="panel p-5 transition hover:ring-2 hover:ring-brand-200">
+            <p className="text-sm font-bold text-slate-900">Manage service collections</p>
+            <p className="mt-1 text-sm text-slate-500">Open collection batches so Sunday and event giving can be reconciled.</p>
+            <p className="mt-4 text-xs font-bold text-brand-700">Open batches →</p>
+          </Link>
+        </div>
+      )}
+
+      {isGiving && (
+        <div className="panel p-5">
+          <SectionLabel>Giving entry</SectionLabel>
+          <div className="flex flex-wrap gap-2">
+            {ACTION_CARDS.filter((card) => card.id !== 'expense').map((card) => {
+              const isActive = selectedAction === card.id;
+              return (
+                <button
+                  key={card.id}
+                  type="button"
+                  onClick={() => switchAction(card.id)}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                >
+                  <card.icon size={16} />
+                  {card.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Main action form + sidebar */}
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+      {(isGiving || isExpenses) && <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         {/* Left — form */}
         <div className="panel p-6">
           {/* Collection form */}
-          {activeAction === 'collection' && (
+          {selectedAction === 'collection' && (
             <>
               <SectionLabel>Record Church Collection</SectionLabel>
               <form onSubmit={onCreateDonation} className="space-y-4">
@@ -379,7 +432,7 @@ export default function DonationsPage() {
           )}
 
           {/* Tithe form */}
-          {activeAction === 'tithe' && (
+          {selectedAction === 'tithe' && (
             <>
               <SectionLabel>Record Member Tithe</SectionLabel>
               <form onSubmit={onCreateDonation} className="space-y-4">
@@ -434,7 +487,7 @@ export default function DonationsPage() {
           )}
 
           {/* Expense form */}
-          {activeAction === 'expense' && (
+          {selectedAction === 'expense' && (
             <>
               <SectionLabel>Record Church Expense</SectionLabel>
               <form onSubmit={onCreateExpense} className="space-y-4">
@@ -481,15 +534,10 @@ export default function DonationsPage() {
             </>
           )}
 
-          {message && (
-            <p className="mt-4 rounded-xl bg-success-50 px-4 py-3 text-sm font-medium text-success-700 ring-1 ring-success-100">
-              {message}
-            </p>
-          )}
         </div>
 
         {/* Right — status sidebar */}
-        <div className="space-y-4">
+        {isGiving && <div className="space-y-4">
           {/* Active batch card */}
           <div className="panel p-5">
             <SectionLabel>Active Batch</SectionLabel>
@@ -518,11 +566,11 @@ export default function DonationsPage() {
             <SectionLabel>Annual Giving {currentYear}</SectionLabel>
             <BreakdownList items={annual?.funds} loading={annualReportQuery.isLoading} emptyLabel="No giving records yet." />
           </div>
-        </div>
-      </div>
+        </div>}
+      </div>}
 
       {/* Finance filter + summary */}
-      <div className="panel p-5">
+      {isReports && <div className="panel p-5">
         <SectionLabel>Filter & Summary</SectionLabel>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <div>
@@ -579,23 +627,18 @@ export default function DonationsPage() {
             <BreakdownList items={summary.expenses_by_category} loading={summaryQuery.isLoading} emptyLabel="No expense data for this filter." />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Ledger */}
-      <div className="panel p-5">
+      {(isGiving || isExpenses) && <div className="panel p-5">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-base font-bold text-slate-900">Ledger</p>
-          <div className="flex rounded-full border border-slate-200 bg-slate-50 p-1">
-            <button type="button" onClick={() => setLedgerView('income')} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${ledgerView === 'income' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-              Income
-            </button>
-            <button type="button" onClick={() => setLedgerView('expense')} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${ledgerView === 'expense' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-              Expenses
-            </button>
+          <div>
+            <p className="text-base font-bold text-slate-900">{isGiving ? 'Giving ledger' : 'Expense ledger'}</p>
+            <p className="mt-1 text-sm text-slate-500">Review recently recorded {isGiving ? 'giving entries' : 'expenses'}.</p>
           </div>
         </div>
 
-        {ledgerView === 'income' ? (
+        {isGiving ? (
           <>
             <div className="mb-4">
               <select className="field max-w-xs" value={selectedBatchId} onChange={(e) => { setSelectedBatchId(e.target.value); setDonationForm((prev) => ({ ...prev, batch_id: e.target.value })); }}>
@@ -612,62 +655,87 @@ export default function DonationsPage() {
         ) : (
           <DataTable columns={expenseColumns} rows={expenseRows} emptyLabel="No expense records yet" />
         )}
-      </div>
+      </div>}
 
-      {/* Advanced setup */}
-      <details className="panel p-5">
-        <summary className="cursor-pointer list-none font-semibold text-slate-800 hover:text-slate-900">
-          Advanced Setup
-          <span className="ml-2 text-sm font-normal text-slate-500">Load standard funds, open batches, and manage categories.</span>
-        </summary>
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <form onSubmit={onCreateBatch} className="rounded-2xl border border-slate-200 p-5">
-            <p className="label-caps mb-4">Open Collection Batch</p>
-            <div className="grid gap-3 md:grid-cols-2">
+      {/* Batches page */}
+      {isBatches && (
+        <div className="space-y-5">
+          <div className="panel p-5">
+            <SectionLabel>Open collection batch</SectionLabel>
+            <p className="mb-4 text-sm text-slate-500">Create one batch for a service or event so the finance team can reconcile the collection.</p>
+            <form onSubmit={onCreateBatch} className="grid gap-3 md:grid-cols-2">
               <input className="field" value={batchForm.title} onChange={(e) => setBatchForm((p) => ({ ...p, title: e.target.value }))} placeholder="Batch title" required />
               <input className="field" type="date" value={batchForm.service_date} onChange={(e) => setBatchForm((p) => ({ ...p, service_date: e.target.value }))} required />
               <select className="field" value={batchForm.service_type} onChange={(e) => setBatchForm((p) => ({ ...p, service_type: e.target.value }))}>
                 {ATTENDANCE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <input className="field" value={batchForm.notes} onChange={(e) => setBatchForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Notes (optional)" />
+              <button type="submit" className="btn-primary md:col-span-2 md:w-fit">{createBatchMutation.isPending ? 'Opening…' : 'Open Batch'}</button>
+            </form>
+          </div>
+          <div className="panel p-5">
+            <div className="mb-4">
+              <p className="text-base font-bold text-slate-900">Collection batches</p>
+              <p className="mt-1 text-sm text-slate-500">Service-day envelopes and their recorded totals.</p>
             </div>
-            <button type="submit" className="btn-primary mt-4">{createBatchMutation.isPending ? 'Opening…' : 'Open Batch'}</button>
-          </form>
-
-          <div className="rounded-2xl border border-slate-200 p-5">
-            <p className="label-caps mb-4">Standard Funds Setup</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {STANDARD_FINANCE_FUNDS.map((name) => {
-                const exists = funds.some((f) => f.name === name);
-                return (
-                  <span key={name} className={`rounded-full px-3 py-1 text-xs font-semibold ${exists ? 'bg-success-50 text-success-700' : 'bg-slate-100 text-slate-500'}`}>
-                    {name}
-                  </span>
-                );
-              })}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button type="button" onClick={onBootstrapFunds} className="btn-outline text-xs">{bootstrapFundsMutation.isPending ? 'Adding…' : 'Load Standard Funds'}</button>
-              <button type="button" onClick={onBootstrapExpenseCategories} className="btn-outline text-xs">{bootstrapExpenseCategoriesMutation.isPending ? 'Adding…' : 'Load Expense Categories'}</button>
-            </div>
-            <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <form onSubmit={onCreateFund} className="space-y-3">
-                <p className="text-xs font-semibold text-slate-600">Add Custom Fund</p>
-                <input className="field" placeholder="Fund name" value={fundForm.name} onChange={(e) => setFundForm((p) => ({ ...p, name: e.target.value }))} required />
-                <input className="field" placeholder="Description" value={fundForm.description} onChange={(e) => setFundForm((p) => ({ ...p, description: e.target.value }))} />
-                <button type="submit" className="btn-primary text-xs">{createFundMutation.isPending ? 'Saving…' : 'Add Fund'}</button>
-              </form>
-              <form onSubmit={onCreateExpenseCategory} className="space-y-3">
-                <p className="text-xs font-semibold text-slate-600">Add Expense Category</p>
-                <input className="field" placeholder="Category name" value={expenseCategoryForm.name} onChange={(e) => setExpenseCategoryForm((p) => ({ ...p, name: e.target.value }))} required />
-                <input className="field" placeholder="Description" value={expenseCategoryForm.description} onChange={(e) => setExpenseCategoryForm((p) => ({ ...p, description: e.target.value }))} />
-                <button type="submit" className="btn-primary text-xs">{createExpenseCategoryMutation.isPending ? 'Saving…' : 'Add Category'}</button>
-              </form>
-            </div>
+            {batchesQuery.isLoading ? <LoadingSpinner label="Loading batches…" /> : <DataTable columns={batchColumns} rows={batches} emptyLabel="No collection batches yet" />}
           </div>
         </div>
-      </details>
-    </section>
+      )}
+
+      {/* Funds and categories page */}
+      {isFunds && (
+        <div className="space-y-5">
+          <div className="panel p-5">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-bold text-slate-900">Church funds</p>
+                <p className="mt-1 text-sm text-slate-500">These funds appear when the finance team records giving.</p>
+              </div>
+              <button type="button" onClick={onBootstrapFunds} className="btn-outline text-xs">{bootstrapFundsMutation.isPending ? 'Adding…' : 'Load Standard Funds'}</button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {funds.map((fund) => (
+                <div key={fund.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="font-bold text-slate-900">{fund.name}</p>
+                  <p className="mt-1 text-xs text-slate-500">{fund.requires_member ? 'Member linked' : 'General collection'}</p>
+                  {fund.description && <p className="mt-3 text-xs leading-5 text-slate-500">{fund.description}</p>}
+                </div>
+              ))}
+            </div>
+            {!funds.length && <p className="text-sm text-slate-500">No funds configured yet. Load the standard church funds to begin.</p>}
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <form onSubmit={onCreateFund} className="panel space-y-3 p-5">
+              <SectionLabel>Add custom fund</SectionLabel>
+              <input className="field" placeholder="Fund name" value={fundForm.name} onChange={(e) => setFundForm((p) => ({ ...p, name: e.target.value }))} required />
+              <input className="field" placeholder="Description (optional)" value={fundForm.description} onChange={(e) => setFundForm((p) => ({ ...p, description: e.target.value }))} />
+              <button type="submit" className="btn-primary">{createFundMutation.isPending ? 'Saving…' : 'Add Fund'}</button>
+            </form>
+            <form onSubmit={onCreateExpenseCategory} className="panel space-y-3 p-5">
+              <SectionLabel>Add expense category</SectionLabel>
+              <input className="field" placeholder="Category name" value={expenseCategoryForm.name} onChange={(e) => setExpenseCategoryForm((p) => ({ ...p, name: e.target.value }))} required />
+              <input className="field" placeholder="Description (optional)" value={expenseCategoryForm.description} onChange={(e) => setExpenseCategoryForm((p) => ({ ...p, description: e.target.value }))} />
+              <button type="submit" className="btn-primary">{createExpenseCategoryMutation.isPending ? 'Saving…' : 'Add Category'}</button>
+            </form>
+          </div>
+
+          <div className="panel p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-base font-bold text-slate-900">Expense categories</p>
+                <p className="mt-1 text-sm text-slate-500">Use categories to keep church spending easy to review.</p>
+              </div>
+              <button type="button" onClick={onBootstrapExpenseCategories} className="btn-outline text-xs">{bootstrapExpenseCategoriesMutation.isPending ? 'Adding…' : 'Load Standard Categories'}</button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {expenseCategories.map((category) => <span key={category.id} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">{category.name}</span>)}
+            </div>
+            {!expenseCategories.length && <p className="text-sm text-slate-500">No expense categories configured yet.</p>}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

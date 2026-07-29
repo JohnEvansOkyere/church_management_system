@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import Badge from '../../components/shared/Badge';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import DataTable from '../../components/shared/DataTable';
@@ -20,6 +21,7 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import StatCard from '../../components/shared/StatCard';
 import { useMemberAttendanceHistory } from '../../hooks/useAttendance';
 import { useDeleteMember, useMember, useMemberActivity, useUpdateMember, useUploadMemberPhoto } from '../../hooks/useMembers';
+import { familyService } from '../../services/familyService';
 import { GENDERS, MARITAL_STATUS, MEMBERSHIP_STATUS } from '../../utils/constants';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { resolvePhotoUrl } from '../../utils/media';
@@ -71,6 +73,10 @@ export default function MemberProfilePage() {
   const updateMutation = useUpdateMember();
   const deleteMutation = useDeleteMember();
   const uploadMutation = useUploadMemberPhoto();
+  const familiesQuery = useQuery({
+    queryKey: ['families', 'member-profile'],
+    queryFn: () => familyService.getAll({ limit: 200 }).then((response) => response.data.data),
+  });
 
   const [activeTab, setActiveTab] = useState('Overview');
   const [message, setMessage] = useState('');
@@ -82,7 +88,7 @@ export default function MemberProfilePage() {
     gender: '', date_of_birth: '', marital_status: '', occupation: '',
     address: '', membership_status: 'active', date_joined: '',
     baptism_date: '', membership_class_completed: false,
-    is_family_head: false, family_id: '',
+    introduced_by: '', family_mode: 'none', is_family_head: false, family_id: '',
   });
 
   useEffect(() => {
@@ -97,6 +103,8 @@ export default function MemberProfilePage() {
       membership_status: member.membership_status || 'active', date_joined: member.date_joined || '',
       baptism_date: member.baptism_date || '',
       membership_class_completed: Boolean(member.membership_class_completed),
+      introduced_by: member.introduced_by || '',
+      family_mode: member.family_id ? 'existing' : 'none',
       is_family_head: Boolean(member.is_family_head), family_id: member.family_id || '',
     });
   }, [memberQuery.data]);
@@ -136,7 +144,8 @@ export default function MemberProfilePage() {
         date_of_birth: form.date_of_birth || null, marital_status: form.marital_status || null,
         occupation: form.occupation || null, address: form.address || null,
         date_joined: form.date_joined || null, baptism_date: form.baptism_date || null,
-        family_id: form.family_id || null,
+        introduced_by: form.introduced_by || null,
+        family_id: form.family_mode === 'existing' ? form.family_id || null : null,
       },
     });
     setMessage('Profile updated successfully.');
@@ -222,6 +231,8 @@ export default function MemberProfilePage() {
                 {member.email && <InfoRow icon={AtSign} label="Email" value={member.email} />}
                 {member.date_of_birth && <InfoRow icon={Cake} label="Birthday" value={formatDate(member.date_of_birth)} />}
                 {member.address && <InfoRow icon={MapPin} label="Address" value={member.address} />}
+                {member.family_name && <InfoRow icon={Home} label="Family" value={member.family_name} />}
+                {member.introduced_by && <InfoRow icon={UserCircle} label="Introduced by" value={member.introduced_by} />}
                 {member.date_joined && <InfoRow icon={Home} label="Joined" value={formatDate(member.date_joined)} />}
               </div>
             </div>
@@ -463,13 +474,27 @@ export default function MemberProfilePage() {
                     <input className="field" type="date" value={form.date_joined} onChange={(e) => setForm((p) => ({ ...p, date_joined: e.target.value }))} />
                   </div>
                   <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Who brought/referred you</label>
+                    <input className="field" value={form.introduced_by} onChange={(e) => setForm((p) => ({ ...p, introduced_by: e.target.value }))} placeholder="Optional" />
+                  </div>
+                  <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">Baptism Date</label>
                     <input className="field" type="date" value={form.baptism_date} onChange={(e) => setForm((p) => ({ ...p, baptism_date: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Family ID</label>
-                    <input className="field" value={form.family_id} onChange={(e) => setForm((p) => ({ ...p, family_id: e.target.value }))} placeholder="Family UUID" />
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Family household (optional)</label>
+                    <select className="field" value={form.family_mode} onChange={(e) => setForm((p) => ({ ...p, family_mode: e.target.value, family_id: e.target.value === 'none' ? '' : p.family_id, is_family_head: e.target.value === 'none' ? false : p.is_family_head }))}>
+                      <option value="none">No family / came alone</option>
+                      <option value="existing">Join an existing family</option>
+                    </select>
                   </div>
+                  {form.family_mode === 'existing' && <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Select family</label>
+                    <select className="field" value={form.family_id} onChange={(e) => setForm((p) => ({ ...p, family_id: e.target.value }))}>
+                      <option value="">Choose an existing household</option>
+                      {(familiesQuery.data || []).map((family) => <option key={family.id} value={family.id}>{family.family_name} ({family.member_count} members)</option>)}
+                    </select>
+                  </div>}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-5">
                   <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
@@ -477,11 +502,11 @@ export default function MemberProfilePage() {
                     <CheckCircle2 size={14} className="text-slate-400" />
                     Membership class completed
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
+                  {form.family_mode !== 'none' && <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
                     <input type="checkbox" checked={form.is_family_head} onChange={(e) => setForm((p) => ({ ...p, is_family_head: e.target.checked }))} className="h-4 w-4 rounded border-slate-300 text-brand-700" />
                     <Home size={14} className="text-slate-400" />
                     Is family head
-                  </label>
+                  </label>}
                 </div>
               </div>
 

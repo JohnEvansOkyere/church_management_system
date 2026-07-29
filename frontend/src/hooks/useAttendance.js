@@ -49,10 +49,7 @@ export function useMarkAttendance(sessionId) {
   return useMutation({
     mutationFn: (payload) => attendanceService.markAttendance(sessionId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendance-session', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['attendance-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['members'] });
     },
   });
 }

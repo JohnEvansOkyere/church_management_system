@@ -60,14 +60,21 @@ def get_member(db: Session, member_id: UUID) -> Member | None:
     return db.query(Member).filter(Member.id == member_id).first()
 
 
+def get_family(db: Session, family_id: UUID) -> Family | None:
+    return db.query(Family).filter(Family.id == family_id).first()
+
+
 def create_member(db: Session, payload: MemberCreate) -> Member:
     data = payload.model_dump(exclude={"family_name"})
 
-    if payload.is_family_head and payload.family_name:
+    if payload.family_name:
         family = Family(family_name=payload.family_name)
         db.add(family)
         db.flush()
         data["family_id"] = family.id
+
+    if payload.family_id and not get_family(db, payload.family_id):
+        raise ValueError("Selected family was not found")
 
     member = Member(**data)
     db.add(member)

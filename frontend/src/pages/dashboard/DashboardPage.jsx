@@ -47,7 +47,7 @@ const quickActions = [
   {
     title: 'Finance Center',
     detail: 'Record giving, expenses, and review fund totals.',
-    to: '/donations',
+    to: '/finance',
     cta: 'Open Finance',
     iconBg: 'bg-church-50',
     icon: Banknote,

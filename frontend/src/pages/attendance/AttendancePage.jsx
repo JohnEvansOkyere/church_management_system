@@ -1,5 +1,5 @@
 import { CheckSquare, Clock, Search, Users, Zap } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Badge from '../../components/shared/Badge';
 import DataTable from '../../components/shared/DataTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
@@ -49,6 +49,7 @@ export default function AttendancePage() {
   const [quickStartTime, setQuickStartTime] = useState(defaultTime('sunday_service'));
   const [dirty, setDirty] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const changeVersionRef = useRef(0);
 
   const sessionsQuery = useAttendanceSessions({ skip: 0, limit: 20 });
   const summaryQuery = useAttendanceSummary();
@@ -98,6 +99,7 @@ export default function AttendancePage() {
   ], []);
 
   useEffect(() => {
+    if (dirty) return;
     const records = selectedSessionQuery.data?.data?.records ?? [];
     const map = {};
     records.forEach((record) => { map[record.member_id] = record.status; });
@@ -108,14 +110,19 @@ export default function AttendancePage() {
   useEffect(() => {
     if (!selectedSessionId || !dirty) return;
     const timer = setTimeout(async () => {
+      const saveVersion = changeVersionRef.current;
       const records = Object.entries(statusMap)
         .filter(([, status]) => Boolean(status))
         .map(([member_id, status]) => ({ member_id, status }));
       if (!records.length) return;
       try {
         await markMutation.mutateAsync({ records });
-        setDirty(false);
-        setSaveMessage(`Saved at ${new Date().toLocaleTimeString()}`);
+        if (saveVersion === changeVersionRef.current) {
+          setDirty(false);
+          setSaveMessage(`Saved at ${new Date().toLocaleTimeString()}`);
+        } else {
+          setSaveMessage('Saving latest changes…');
+        }
       } catch {
         setSaveMessage('Auto-save failed. Try again.');
       }
@@ -143,12 +150,14 @@ export default function AttendancePage() {
   }
 
   function updateStatus(memberId, nextStatus) {
+    changeVersionRef.current += 1;
     setStatusMap((prev) => ({ ...prev, [memberId]: nextStatus || undefined }));
     setDirty(true);
     setSaveMessage('Saving…');
   }
 
   function applyBulk(status) {
+    changeVersionRef.current += 1;
     const next = { ...statusMap };
     filteredMembers.forEach((m) => { next[m.id] = status; });
     setStatusMap(next);

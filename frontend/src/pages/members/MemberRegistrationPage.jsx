@@ -1,8 +1,10 @@
 import { ArrowLeft, CheckCircle2, Home, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import PageHeader from '../../components/shared/PageHeader';
 import { useCreateMember } from '../../hooks/useMembers';
+import { familyService } from '../../services/familyService';
 import { GENDERS, MARITAL_STATUS, MEMBERSHIP_STATUS } from '../../utils/constants';
 
 const initialForm = {
@@ -11,7 +13,7 @@ const initialForm = {
   date_of_birth: '', address: '', occupation: '',
   marital_status: '', membership_status: 'active',
   date_joined: '', membership_class_completed: false,
-  is_family_head: false, family_name: '', family_id: '',
+  introduced_by: '', family_mode: 'none', is_family_head: false, family_name: '', family_id: '',
 };
 
 function FormSection({ title, children }) {
@@ -40,6 +42,10 @@ export default function MemberRegistrationPage() {
   const createMutation = useCreateMember();
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState('');
+  const familiesQuery = useQuery({
+    queryKey: ['families', 'member-registration'],
+    queryFn: () => familyService.getAll({ limit: 200 }).then((response) => response.data.data),
+  });
 
   const set = (key) => (e) => setForm((p) => ({
     ...p,
@@ -49,14 +55,17 @@ export default function MemberRegistrationPage() {
   async function onSubmit(event) {
     event.preventDefault();
     setMessage('');
+    const { family_mode, ...memberFields } = form;
     const payload = {
-      ...form,
+      ...memberFields,
       other_name: form.other_name || null, phone: form.phone || null,
       email: form.email || null, gender: form.gender || null,
       date_of_birth: form.date_of_birth || null, address: form.address || null,
       occupation: form.occupation || null, marital_status: form.marital_status || null,
-      date_joined: form.date_joined || null, family_name: form.family_name || null,
-      family_id: form.family_id || null,
+      date_joined: form.date_joined || null,
+      family_name: family_mode === 'new' ? form.family_name || null : null,
+      family_id: family_mode === 'existing' ? form.family_id || null : null,
+      is_family_head: family_mode === 'new' ? form.is_family_head : false,
     };
     await createMutation.mutateAsync(payload);
     setForm(initialForm);
@@ -129,16 +138,30 @@ export default function MemberRegistrationPage() {
           <Field label="Date Joined">
             <input type="date" className="field" value={form.date_joined} onChange={set('date_joined')} />
           </Field>
+          <Field label="Who brought you / referred you">
+            <input className="field" placeholder="Name of person (optional)" value={form.introduced_by} onChange={set('introduced_by')} />
+          </Field>
         </FormSection>
 
         {/* Section 3 — Family */}
-        <FormSection title="Family Household">
-          <Field label="Family Name (new family)">
-            <input className="field" placeholder="e.g. Asante Family" value={form.family_name} onChange={set('family_name')} />
+        <FormSection title="Family Household (Optional)">
+          <Field label="Household association">
+            <select className="field" value={form.family_mode} onChange={(event) => setForm((previous) => ({ ...previous, family_mode: event.target.value, family_id: '', family_name: '', is_family_head: event.target.value === 'new' }))}>
+              <option value="none">No family / came alone</option>
+              <option value="existing">Join an existing family</option>
+              <option value="new">Create a new family</option>
+            </select>
           </Field>
-          <Field label="Family ID (existing family)">
-            <input className="field" placeholder="UUID of existing family" value={form.family_id} onChange={set('family_id')} />
-          </Field>
+          {form.family_mode === 'existing' && <Field label="Select family">
+            <select required className="field" value={form.family_id} onChange={set('family_id')}>
+              <option value="">Choose an existing household</option>
+              {(familiesQuery.data || []).map((family) => <option key={family.id} value={family.id}>{family.family_name} ({family.member_count} members)</option>)}
+            </select>
+          </Field>}
+          {form.family_mode === 'new' && <Field label="New family / household name">
+            <input required className="field" placeholder="e.g. Asante Family" value={form.family_name} onChange={set('family_name')} />
+            <p className="mt-1 text-xs text-slate-500">The system generates the family ID automatically.</p>
+          </Field>}
         </FormSection>
 
         {/* Checkboxes */}
@@ -148,11 +171,11 @@ export default function MemberRegistrationPage() {
             <CheckCircle2 size={14} className="text-slate-400" />
             Membership class completed
           </label>
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-slate-700">
+          {form.family_mode === 'new' && <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-slate-700">
             <input type="checkbox" checked={form.is_family_head} onChange={set('is_family_head')} className="h-4 w-4 rounded border-slate-300 accent-brand-700" />
             <Home size={14} className="text-slate-400" />
             Is family head
-          </label>
+          </label>}
         </div>
 
         {message && (

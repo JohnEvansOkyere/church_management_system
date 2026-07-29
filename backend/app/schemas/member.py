@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class FamilyCreate(BaseModel):
@@ -18,6 +18,7 @@ class MemberBase(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     address: Optional[str] = None
+    introduced_by: Optional[str] = None
     occupation: Optional[str] = None
     marital_status: Optional[str] = None
     membership_status: Optional[str] = "active"
@@ -31,6 +32,12 @@ class MemberBase(BaseModel):
 class MemberCreate(MemberBase):
     family_name: Optional[str] = None
 
+    @model_validator(mode="after")
+    def validate_family_choice(self):
+        if self.family_id and self.family_name:
+            raise ValueError("Choose an existing family or create a new family, not both")
+        return self
+
 
 class MemberUpdate(BaseModel):
     first_name: Optional[str] = None
@@ -41,6 +48,7 @@ class MemberUpdate(BaseModel):
     date_of_birth: Optional[date] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    introduced_by: Optional[str] = None
     address: Optional[str] = None
     occupation: Optional[str] = None
     marital_status: Optional[str] = None
@@ -62,6 +70,7 @@ class MemberResponse(BaseModel):
     date_of_birth: Optional[date] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    introduced_by: Optional[str] = None
     address: Optional[str] = None
     occupation: Optional[str] = None
     marital_status: Optional[str] = None
@@ -70,6 +79,7 @@ class MemberResponse(BaseModel):
     baptism_date: Optional[date] = None
     membership_class_completed: bool
     family_id: Optional[UUID] = None
+    family_name: Optional[str] = None
     is_family_head: bool
     low_attendance: bool = False
     created_at: datetime

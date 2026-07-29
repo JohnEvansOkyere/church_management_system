@@ -10,6 +10,7 @@ const PAGE_NAMES = {
   members: 'Members',
   attendance: 'Attendance',
   donations: 'Finance',
+  finance: 'Finance',
   groups: 'Groups',
   events: 'Events',
   communication: 'Communication',

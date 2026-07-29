@@ -20,6 +20,7 @@ class Member(Base):
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
     address = Column(Text, nullable=True)
+    introduced_by = Column(String, nullable=True)
     occupation = Column(String, nullable=True)
     marital_status = Column(String, nullable=True)
     membership_status = Column(String, nullable=True, default="active")

@@ -35,7 +35,8 @@ frontend/src/
 │   ├── members/MembersPage.jsx
 │   ├── members/MemberProfilePage.jsx
 │   ├── attendance/AttendancePage.jsx
-│   ├── donations/DonationsPage.jsx   # Finance workspace (current path kept for compatibility)
+│   ├── donations/DonationsPage.jsx   # Finance section views (legacy folder retained)
+│   ├── finance/FinanceLayout.jsx     # Finance navigation shell
 │   ├── groups/GroupsPage.jsx
 │   ├── events/EventsPage.jsx
 │   ├── communication/CommunicationPage.jsx
@@ -85,7 +86,15 @@ export default function App() {
           <Route path="members" element={<MembersPage />} />
           <Route path="members/:id" element={<MemberProfilePage />} />
           <Route path="attendance" element={<AttendancePage />} />
-          <Route path="donations" element={<DonationsPage />} />  // Finance workspace
+          <Route path="finance" element={<FinanceLayout />}>       // Finance workspace
+            <Route index element={<DonationsPage view="overview" />} />
+            <Route path="giving" element={<DonationsPage view="giving" />} />
+            <Route path="expenses" element={<DonationsPage view="expenses" />} />
+            <Route path="batches" element={<DonationsPage view="batches" />} />
+            <Route path="funds" element={<DonationsPage view="funds" />} />
+            <Route path="reports" element={<DonationsPage view="reports" />} />
+          </Route>
+          <Route path="donations" element={<Navigate to="/finance" replace />} />
           <Route path="groups" element={<GroupsPage />} />
           <Route path="events" element={<EventsPage />} />
           <Route path="communication" element={<CommunicationPage />} />

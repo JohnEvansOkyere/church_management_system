@@ -57,6 +57,7 @@ date_of_birth   DATE
 phone           VARCHAR
 email           VARCHAR
 address         TEXT
+introduced_by   VARCHAR NULLABLE
 occupation      VARCHAR
 marital_status  VARCHAR  -- single, married, divorced, widowed
 membership_status VARCHAR  -- active, inactive, visitor, new_convert

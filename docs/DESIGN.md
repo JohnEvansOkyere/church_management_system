@@ -616,8 +616,8 @@ Underline tab style: brand-700 underline, 2px, active tab
 Two columns:
 Left: Personal Details card
   - Date of Birth, Gender, Marital Status, Occupation, Address, Emergency Contact
-Right: Family Household card (if applicable)
-  - Household head, family members list
+Right: Optional Family Household card
+  - No family, existing household selector, or create new family
 ```
 
 **Tab: Attendance**

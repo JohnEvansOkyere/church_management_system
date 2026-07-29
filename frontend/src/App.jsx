@@ -8,7 +8,9 @@ import CommunicationPage from './pages/communication/CommunicationPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import DonationsPage from './pages/donations/DonationsPage';
 import EventsPage from './pages/events/EventsPage';
+import FinanceLayout from './pages/finance/FinanceLayout';
 import GroupsPage from './pages/groups/GroupsPage';
+import DepartmentMembersPage from './pages/groups/DepartmentMembersPage';
 import MemberProfilePage from './pages/members/MemberProfilePage';
 import MemberRegistrationPage from './pages/members/MemberRegistrationPage';
 import MembersPage from './pages/members/MembersPage';
@@ -86,8 +88,17 @@ export default function App() {
             <Route path="members/register" element={<MemberRegistrationPage />} />
             <Route path="members/:id" element={<MemberProfilePage />} />
             <Route path="attendance" element={<AttendancePage />} />
-            <Route path="donations" element={<DonationsPage />} />
+            <Route path="finance" element={<FinanceLayout />}>
+              <Route index element={<DonationsPage view="overview" />} />
+              <Route path="giving" element={<DonationsPage view="giving" />} />
+              <Route path="expenses" element={<DonationsPage view="expenses" />} />
+              <Route path="batches" element={<DonationsPage view="batches" />} />
+              <Route path="funds" element={<DonationsPage view="funds" />} />
+              <Route path="reports" element={<DonationsPage view="reports" />} />
+            </Route>
+            <Route path="donations" element={<Navigate to="/finance" replace />} />
             <Route path="groups" element={<GroupsPage />} />
+            <Route path="groups/:id/members" element={<DepartmentMembersPage />} />
             <Route path="events" element={<EventsPage />} />
             <Route path="communication" element={<CommunicationPage />} />
             <Route path="reports" element={<ReportsPage />} />

@@ -25,7 +25,7 @@ const navSections = [
   {
     title: 'Ministry',
     items: [
-      { to: '/donations', label: 'Finance', icon: Banknote },
+      { to: '/finance', label: 'Finance', icon: Banknote },
       { to: '/groups', label: 'Groups', icon: UsersRound },
       { to: '/events', label: 'Events', icon: CalendarDays },
       { to: '/communication', label: 'Communication', icon: MessageSquare },

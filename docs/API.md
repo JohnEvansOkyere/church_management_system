@@ -99,6 +99,13 @@ GET    /members/family/{family_id}
 GET    /members/export
 ```
 
+### Families
+```
+GET    /families?search=Asante&limit=100
+POST   /families
+GET    /families/{id}
+```
+
 ### Attendance
 ```
 GET    /attendance/sessions

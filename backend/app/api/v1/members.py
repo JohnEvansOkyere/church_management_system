@@ -18,6 +18,13 @@ from app.services.audit import record_audit
 router = APIRouter()
 
 
+def _serialize_member(member, low_attendance: bool = False) -> dict:
+    row = MemberResponse.model_validate(member).model_dump()
+    row["family_name"] = member.family.family_name if member.family else None
+    row["low_attendance"] = low_attendance
+    return row
+
+
 def _serialize_donation_activity(row) -> dict:
     data = DonationResponse.model_validate(row).model_dump()
     data["fund_name"] = row.fund.name if row.fund else None
@@ -40,9 +47,7 @@ def list_members(
 
     data = []
     for m in members:
-        row = MemberResponse.model_validate(m).model_dump()
-        row["low_attendance"] = low_map.get(m.id, False)
-        data.append(row)
+        data.append(_serialize_member(m, low_map.get(m.id, False)))
 
     page = (skip // limit) + 1
     return {"status": "success", "data": data, "total": total, "page": page, "limit": limit}
@@ -54,19 +59,14 @@ def create_member(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles("superadmin", "secretary")),
 ):
-    if payload.is_family_head and not payload.family_name and not payload.family_id:
-        raise HTTPException(
-            status_code=400,
-            detail="family_name or family_id is required when is_family_head is true",
-        )
-
-    member = member_crud.create_member(db, payload)
+    try:
+        member = member_crud.create_member(db, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     record_audit(db, user_id=current_user.id, action="created", table_name="members", record_id=member.id, new_value={"first_name": member.first_name, "last_name": member.last_name})
     db.commit()
     low_map = member_crud.build_low_attendance_map(db, [member.id])
-    row = MemberResponse.model_validate(member).model_dump()
-    row["low_attendance"] = low_map.get(member.id, False)
-    return {"status": "success", "data": row}
+    return {"status": "success", "data": _serialize_member(member, low_map.get(member.id, False))}
 
 
 @router.get("/family/{family_id}")
@@ -80,9 +80,7 @@ def get_family_members(
 
     data = []
     for m in members:
-        row = MemberResponse.model_validate(m).model_dump()
-        row["low_attendance"] = low_map.get(m.id, False)
-        data.append(row)
+        data.append(_serialize_member(m, low_map.get(m.id, False)))
 
     return {"status": "success", "data": data}
 
@@ -109,9 +107,7 @@ def get_member(
         raise HTTPException(status_code=404, detail="Member not found")
 
     low_map = member_crud.build_low_attendance_map(db, [member.id])
-    row = MemberResponse.model_validate(member).model_dump()
-    row["low_attendance"] = low_map.get(member.id, False)
-    return {"status": "success", "data": row}
+    return {"status": "success", "data": _serialize_member(member, low_map.get(member.id, False))}
 
 
 @router.get("/{member_id}/activity")
@@ -148,6 +144,9 @@ def update_member(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles("superadmin", "secretary")),
 ):
+    if payload.family_id and not member_crud.get_family(db, payload.family_id):
+        raise HTTPException(status_code=400, detail="Selected family was not found")
+
     member = member_crud.update_member(db, member_id, payload)
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
@@ -155,9 +154,7 @@ def update_member(
     record_audit(db, user_id=current_user.id, action="updated", table_name="members", record_id=member.id, new_value=payload.model_dump(exclude_unset=True))
     db.commit()
     low_map = member_crud.build_low_attendance_map(db, [member.id])
-    row = MemberResponse.model_validate(member).model_dump()
-    row["low_attendance"] = low_map.get(member.id, False)
-    return {"status": "success", "data": row}
+    return {"status": "success", "data": _serialize_member(member, low_map.get(member.id, False))}
 
 
 @router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -203,6 +200,4 @@ def upload_member_photo(
     updated = member_crud.update_member(db, member_id, MemberUpdate(photo_url=photo_url))
     record_audit(db, user_id=current_user.id, action="updated", table_name="members", record_id=member_id, new_value={"photo_url": photo_url})
     db.commit()
-    row = MemberResponse.model_validate(updated).model_dump()
-    row["low_attendance"] = member_crud.build_low_attendance_map(db, [member_id]).get(member_id, False)
-    return {"status": "success", "data": row}
+    return {"status": "success", "data": _serialize_member(updated, member_crud.build_low_attendance_map(db, [member_id]).get(member_id, False))}
