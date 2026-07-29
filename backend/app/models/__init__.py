@@ -1,7 +1,17 @@
 from app.models.attendance import AttendanceRecord, AttendanceSession
 from app.models.donation import Donation, DonationFund, Expense, ExpenseCategory, FinanceBatch
 from app.models.family import Family
+from app.models.group import Group, GroupMember
 from app.models.member import Member
+from app.models.communication import Communication, ReminderRun, ReminderSchedule
+from app.models.event import Event, EventRegistration
+from app.models.pastoral import PastoralLog
+from app.models.audit import AuditLog
+from app.models.announcement import Announcement
 from app.models.user import User
 
-__all__ = ["User", "Family", "Member", "AttendanceSession", "AttendanceRecord", "FinanceBatch", "DonationFund", "Donation", "ExpenseCategory", "Expense"]
+__all__ = [
+    "User", "Family", "Member", "Group", "GroupMember", "Communication",
+    "ReminderSchedule", "ReminderRun", "Event", "EventRegistration", "PastoralLog", "AuditLog", "AttendanceSession", "AttendanceRecord",
+    "FinanceBatch", "DonationFund", "Donation", "ExpenseCategory", "Expense", "Announcement",
+]

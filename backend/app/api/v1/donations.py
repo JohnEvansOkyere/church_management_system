@@ -22,6 +22,7 @@ from app.schemas.donation import (
     FinanceBatchCreate,
     FinanceBatchResponse,
 )
+from app.services.audit import record_audit
 
 router = APIRouter()
 
@@ -74,6 +75,8 @@ def create_donation(
         row = donation_crud.create_donation(db, payload, recorded_by=current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    record_audit(db, user_id=current_user.id, action="created", table_name="donations", record_id=row.id, new_value={"amount": str(row.amount), "fund_id": str(row.fund_id)})
+    db.commit()
     return {"status": "success", "data": serialize_donation(row)}
 
 
@@ -99,6 +102,8 @@ def create_fund(
     current_user=Depends(require_roles("superadmin")),
 ):
     row = donation_crud.create_fund(db, payload)
+    record_audit(db, user_id=current_user.id, action="created", table_name="donation_funds", record_id=row.id, new_value={"name": row.name})
+    db.commit()
     return {"status": "success", "data": DonationFundResponse.model_validate(row).model_dump()}
 
 
@@ -119,6 +124,8 @@ def create_batch(
     current_user=Depends(require_roles("superadmin", "finance")),
 ):
     row = donation_crud.create_batch(db, payload, recorded_by=current_user.id)
+    record_audit(db, user_id=current_user.id, action="created", table_name="finance_batches", record_id=row.id, new_value={"title": row.title, "service_date": row.service_date.isoformat()})
+    db.commit()
     data = FinanceBatchResponse.model_validate(row).model_dump()
     data["total_amount"] = 0
     data["transaction_count"] = 0
@@ -230,6 +237,8 @@ def create_expense(
     current_user=Depends(require_roles("superadmin", "finance")),
 ):
     row = donation_crud.create_expense(db, payload, recorded_by=current_user.id)
+    record_audit(db, user_id=current_user.id, action="created", table_name="expenses", record_id=row.id, new_value={"amount": str(row.amount), "category_id": str(row.category_id)})
+    db.commit()
     return {"status": "success", "data": serialize_expense(row)}
 
 
@@ -255,6 +264,8 @@ def create_expense_category(
     current_user=Depends(require_roles("superadmin")),
 ):
     row = donation_crud.create_expense_category(db, payload)
+    record_audit(db, user_id=current_user.id, action="created", table_name="expense_categories", record_id=row.id, new_value={"name": row.name})
+    db.commit()
     return {"status": "success", "data": ExpenseCategoryResponse.model_validate(row).model_dump()}
 
 

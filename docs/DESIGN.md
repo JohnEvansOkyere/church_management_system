@@ -775,15 +775,15 @@ Bottom: Member giving statement search
 
 ---
 
-### 6.8 Groups & Ministries Page
+### 6.8 Departments & Ministries Page
 
 **Page Header:**
 ```
-Groups & Ministries                         [+ Create Group]
-Manage your church departments, ministries, and cells.
+Departments & Ministries                    [+ Create Department]
+Manage each church department as one complete ministry team.
 ```
 
-**Groups Grid (3 per row on xl):**
+**Departments Grid (3 per row on xl):**
 ```
 ┌──────────────────────────────────┐
 │  [group icon/color swatch]       │
@@ -793,12 +793,12 @@ Manage your church departments, ministries, and cells.
 │  [View Members →]  [Edit]        │
 └──────────────────────────────────┘
 ```
-Group icon color: cycle through brand-700, accent-700, amber-700, success-700
+Department icon color: cycle through brand-700, accent-700, amber-700, success-700
 
-**Group Detail (slide-over panel or separate page):**
+**Department Detail (slide-over panel or separate page):**
 ```
-Header: Group name, description, leader
-Member list: searchable, with add/remove actions
+Header: Department name, description, leader
+Member list: searchable, with add/remove actions. There are no sub-units under a department.
 ```
 
 ---
@@ -865,7 +865,7 @@ Capacity: 200 / 250 registered
 └─────────────────────────────┘  └──────────────────────────────┘
 ```
 
-**Announcement tab:** inline post visible on the dashboard announcement strip.
+**Automatic Reminders tab:** configure a weekly day, Africa/Accra time, audience, and SMS template. Show active/paused state and last run.
 
 ---
 

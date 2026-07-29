@@ -1,135 +1,90 @@
-import { CalendarDays, Clock, MapPin, Plus } from 'lucide-react';
-import Badge from '../../components/shared/Badge';
-import EmptyState from '../../components/shared/EmptyState';
+import { CalendarDays, Clock, MapPin, Plus, Send, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../../components/shared/PageHeader';
+import { eventsService } from '../../services/eventsService';
 
-const PLACEHOLDER_EVENTS = [
-  {
-    id: 1,
-    title: 'Easter Sunday Service',
-    date: 'Sun, 20 Apr 2026',
-    time: '8:00 AM',
-    location: 'Main Auditorium',
-    type: 'sunday_service',
-    registered: 210,
-    capacity: 300,
-  },
-  {
-    id: 2,
-    title: 'Youth Retreat 2026',
-    date: 'Sat, 26 Apr 2026',
-    time: '6:00 AM',
-    location: 'Akosombo Conference Centre',
-    type: 'special',
-    registered: 45,
-    capacity: 60,
-  },
-  {
-    id: 3,
-    title: 'Midweek Bible Study',
-    date: 'Wed, 23 Apr 2026',
-    time: '6:30 PM',
-    location: 'Fellowship Hall',
-    type: 'midweek',
-    registered: 88,
-    capacity: 120,
-  },
-];
+const initialForm = { title: '', description: '', location: '', start_datetime: '', end_datetime: '', max_capacity: '', is_recurring: false, recurrence_rule: 'WEEKLY' };
 
-const TYPE_BADGE_MAP = {
-  sunday_service: 'visitor',
-  midweek: 'new_convert',
-  special: 'followup',
-  prayer: 'default',
-};
+function formatDate(value) {
+  return value ? new Intl.DateTimeFormat('en-GH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
+}
 
-function EventCard({ event }) {
-  const pct = event.capacity > 0 ? Math.round((event.registered / event.capacity) * 100) : 0;
-  return (
-    <article className="panel p-5 transition hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-brand-50">
-          <CalendarDays size={20} className="text-brand-700" />
-        </div>
-        <Badge variant={TYPE_BADGE_MAP[event.type] ?? 'default'}>{event.type?.replace('_', ' ')}</Badge>
-      </div>
-      <h3 className="mt-3 text-base font-bold text-slate-900">{event.title}</h3>
-      <div className="mt-2 space-y-1">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <CalendarDays size={12} /> {event.date}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <Clock size={12} /> {event.time}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <MapPin size={12} /> {event.location}
-        </div>
-      </div>
-
-      {/* Capacity bar */}
-      <div className="mt-4">
-        <div className="mb-1 flex justify-between text-xs text-slate-500">
-          <span>{event.registered} registered</span>
-          <span>{event.capacity} capacity</span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className={`h-full rounded-full ${pct >= 90 ? 'bg-accent-700' : pct >= 70 ? 'bg-church-700' : 'bg-brand-700'}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
-        <button type="button" className="btn-ghost text-xs px-3 py-1.5">View Details</button>
-        <button type="button" className="btn-ghost text-xs px-3 py-1.5">Edit</button>
-      </div>
-    </article>
-  );
+function errorMessage(error) {
+  return error?.response?.data?.detail || 'Something went wrong. Please try again.';
 }
 
 export default function EventsPage() {
+  const queryClient = useQueryClient();
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState(initialForm);
+  const [feedback, setFeedback] = useState(null);
+  const eventsQuery = useQuery({
+    queryKey: ['events'],
+    queryFn: () => eventsService.getAll({ upcoming_only: false }).then((response) => response.data.data),
+  });
+  const createMutation = useMutation({
+    mutationFn: (payload) => eventsService.create(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      setForm(initialForm);
+      setShowCreate(false);
+      setFeedback({ type: 'success', text: 'Event created successfully.' });
+    },
+    onError: (error) => setFeedback({ type: 'error', text: errorMessage(error) }),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id) => eventsService.remove(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['events'] }),
+    onError: (error) => setFeedback({ type: 'error', text: errorMessage(error) }),
+  });
+  const remindMutation = useMutation({
+    mutationFn: (id) => eventsService.remind(id),
+    onSuccess: (response) => setFeedback({ type: 'success', text: `${response.data.data.successful_count} reminder SMS message(s) sent.` }),
+    onError: (error) => setFeedback({ type: 'error', text: errorMessage(error) }),
+  });
+
+  function submit(event) {
+    event.preventDefault();
+    setFeedback(null);
+    createMutation.mutate({
+      ...form,
+      start_datetime: new Date(form.start_datetime).toISOString(),
+      end_datetime: form.end_datetime ? new Date(form.end_datetime).toISOString() : undefined,
+      max_capacity: form.max_capacity ? Number(form.max_capacity) : undefined,
+    });
+  }
+
+  const events = eventsQuery.data || [];
   return (
     <section className="space-y-5">
       <PageHeader
         title="Events & Calendar"
-        subtitle="Manage services, special events, and their registrations."
-        action={
-          <button type="button" className="btn-primary">
-            <Plus size={15} />
-            Create Event
-          </button>
-        }
+        subtitle="Manage services, special events, registrations, and reminders."
+        action={<button type="button" className="btn-primary" onClick={() => setShowCreate((value) => !value)}>{showCreate ? <X size={15} /> : <Plus size={15} />} {showCreate ? 'Close' : 'Create Event'}</button>}
       />
-
-      {/* Coming soon notice */}
-      <div className="panel border-l-4 border-church-700 p-5">
-        <p className="text-sm font-bold text-church-700">Backend module coming soon</p>
-        <p className="mt-1 text-sm text-slate-600">
-          The Events API is under development. Below is a preview using sample data.
-        </p>
-      </div>
-
-      {PLACEHOLDER_EVENTS.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {PLACEHOLDER_EVENTS.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
-      ) : (
-        <div className="panel p-8">
-          <EmptyState
-            icon={CalendarDays}
-            label="No events scheduled"
-            sublabel="Create your first event to start managing registrations."
-            action={
-              <button type="button" className="btn-primary">
-                <Plus size={14} /> Create Event
-              </button>
-            }
-          />
-        </div>
-      )}
+      {feedback && <p className={`rounded-xl px-4 py-3 text-sm font-medium ring-1 ${feedback.type === 'error' ? 'bg-accent-50 text-accent-700 ring-accent-100' : 'bg-success-50 text-success-700 ring-success-100'}`}>{feedback.text}</p>}
+      {showCreate && <form onSubmit={submit} className="panel grid gap-4 p-6 md:grid-cols-2">
+        <div className="md:col-span-2"><label className="mb-1.5 block text-sm font-semibold text-slate-700">Title *</label><input required className="field" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Sunday Service" /></div>
+        <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Start *</label><input required type="datetime-local" className="field" value={form.start_datetime} onChange={(event) => setForm({ ...form, start_datetime: event.target.value })} /></div>
+        <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">End</label><input type="datetime-local" className="field" value={form.end_datetime} onChange={(event) => setForm({ ...form, end_datetime: event.target.value })} /></div>
+        <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Location</label><input className="field" value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Main auditorium" /></div>
+        <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Capacity</label><input type="number" min="1" className="field" value={form.max_capacity} onChange={(event) => setForm({ ...form, max_capacity: event.target.value })} placeholder="Optional" /></div>
+        <div className="md:col-span-2"><label className="mb-1.5 block text-sm font-semibold text-slate-700">Description</label><textarea className="field min-h-24" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></div>
+        <label className="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.is_recurring} onChange={(event) => setForm({ ...form, is_recurring: event.target.checked })} className="accent-brand-700" /> Recurring event</label>
+        <button type="submit" className="btn-primary justify-center" disabled={createMutation.isPending}>{createMutation.isPending ? 'Saving…' : 'Save Event'}</button>
+      </form>}
+      {eventsQuery.isLoading && <div className="panel p-8 text-sm text-slate-500">Loading events…</div>}
+      {eventsQuery.isError && <div className="panel p-8 text-sm text-accent-700">Unable to load events.</div>}
+      {!eventsQuery.isLoading && !events.length && <div className="panel p-8 text-center text-sm text-slate-500">No events have been created yet.</div>}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{events.map((event) => (
+        <article key={event.id} className="panel p-5">
+          <div className="flex items-start justify-between gap-3"><div className="rounded-2xl bg-brand-50 p-3 text-brand-700"><CalendarDays size={20} /></div>{event.is_recurring && <span className="rounded-full bg-church-50 px-2.5 py-1 text-xs font-semibold text-church-700">Recurring</span>}</div>
+          <h3 className="mt-4 text-base font-bold text-slate-900">{event.title}</h3>
+          <div className="mt-3 space-y-2 text-sm text-slate-500"><p className="flex items-center gap-2"><Clock size={14} /> {formatDate(event.start_datetime)}</p><p className="flex items-center gap-2"><MapPin size={14} /> {event.location || 'Location not set'}</p><p>{event.registration_count} registered{event.max_capacity ? ` of ${event.max_capacity}` : ''}</p></div>
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4"><button type="button" className="btn-ghost px-0" onClick={() => remindMutation.mutate(event.id)} disabled={!event.registration_count || remindMutation.isPending}><Send size={14} /> Remind</button><button type="button" className="btn-ghost px-0 text-accent-700 hover:bg-accent-50" onClick={() => deleteMutation.mutate(event.id)}><Trash2 size={14} /> Delete</button></div>
+        </article>
+      ))}</div>
     </section>
   );
 }

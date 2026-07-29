@@ -33,3 +33,50 @@ services:
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
+      - key: SMS_PROVIDER
+        value: arkesel
+      - key: ARKESEL_API_KEY
+        sync: false
+      - key: ARKESEL_SENDER_ID
+        value: LivingSpring
+      - key: ARKESEL_BASE_URL
+        value: https://sms.arkesel.com
+      - key: MOOLRE_VAS_KEY
+        sync: false
+      - key: MOOLRE_SENDER_ID
+        value: LivingSpring
+      - key: MOOLRE_BASE_URL
+        value: https://api.moolre.com
+
+  # Render cron jobs run in UTC. The reminder worker converts each schedule
+  # to its configured timezone (Africa/Accra by default) before sending.
+  # Cron jobs require a paid Render plan; use an external cron service if
+  # you prefer to keep the web service on the free plan.
+  - type: cron
+    name: living-spring-reminders
+    runtime: python
+    region: frankfurt
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/run_reminders.py
+    schedule: "*/10 * * * *"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL
+        sync: false
+      - key: SMS_PROVIDER
+        value: arkesel
+      - key: ARKESEL_API_KEY
+        sync: false
+      - key: ARKESEL_SENDER_ID
+        value: LivingSpring
+      - key: ARKESEL_BASE_URL
+        value: https://sms.arkesel.com
+      - key: MOOLRE_VAS_KEY
+        sync: false
+      - key: MOOLRE_SENDER_ID
+        value: LivingSpring
+      - key: MOOLRE_BASE_URL
+        value: https://api.moolre.com

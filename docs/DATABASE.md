@@ -24,6 +24,9 @@ Migrations are managed with **Alembic**.
 | `events` | Church events and programs |
 | `event_registrations` | Member registrations for events |
 | `communications` | Log of SMS/email messages sent |
+| `reminder_schedules` | Weekly recurring SMS definitions |
+| `reminder_runs` | Idempotent execution history for recurring reminders |
+| `announcements` | In-app notices shown in the notification bell |
 | `pastoral_logs` | Pastoral follow-up notes per member |
 | `audit_logs` | Tracks all changes in the system |
 
@@ -202,12 +205,19 @@ Member activity reporting should support:
 ### `groups`
 ```sql
 id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
-name        VARCHAR NOT NULL  -- Choir, Ushers, Youth, Women's Fellowship, etc.
+name        VARCHAR UNIQUE NOT NULL  -- one complete ministry/department team
 description TEXT
 leader_id   UUID FK members.id NULLABLE
 is_active   BOOLEAN DEFAULT TRUE
 created_at  TIMESTAMP DEFAULT NOW()
+updated_at  TIMESTAMP DEFAULT NOW()
 ```
+
+Departments are intentionally flat. There are no units underneath a
+department because each ministry works as one complete team. The initial
+departments are Ushering, Springs Harmony Choir, Protocol Ministry, Media,
+ICT & Publicity Ministry, King's Kids Ministry, GenNext, Battle Axe, Crowns of
+Glory, Men of Honour, and Car Park Ministry.
 
 ### `group_members`
 ```sql
@@ -248,10 +258,60 @@ id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
 type        VARCHAR  -- sms, email
 subject     VARCHAR  -- for emails
 body        TEXT NOT NULL
-recipients  TEXT  -- JSON array of member IDs or group IDs
+audience_type VARCHAR  -- all_members, department, selected_members
+group_id    UUID FK groups.id NULLABLE
+recipients  TEXT  -- JSON array of resolved member IDs
+recipient_count INTEGER DEFAULT 0
+successful_count INTEGER DEFAULT 0
+failed_count INTEGER DEFAULT 0
 sent_by     UUID FK users.id
 sent_at     TIMESTAMP DEFAULT NOW()
-status      VARCHAR  -- sent, failed, partial
+status      VARCHAR  -- sent, failed, partial, skipped
+```
+
+### `reminder_schedules`
+```sql
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
+name            VARCHAR NOT NULL
+message_template TEXT NOT NULL
+frequency       VARCHAR DEFAULT 'weekly'
+weekday         INTEGER NOT NULL  -- Monday=0 ... Sunday=6
+send_time       TIME NOT NULL
+timezone        VARCHAR DEFAULT 'Africa/Accra'
+audience_type   VARCHAR NOT NULL  -- all_members or department
+group_id        UUID FK groups.id NULLABLE
+start_date      DATE NULLABLE
+end_date        DATE NULLABLE
+is_active       BOOLEAN DEFAULT TRUE
+last_run_at     TIMESTAMP NULLABLE
+created_by      UUID FK users.id
+created_at      TIMESTAMP DEFAULT NOW()
+updated_at      TIMESTAMP DEFAULT NOW()
+```
+
+### `reminder_runs`
+```sql
+id               UUID PRIMARY KEY DEFAULT gen_random_uuid()
+schedule_id      UUID FK reminder_schedules.id
+scheduled_for    TIMESTAMP NOT NULL
+communication_id UUID FK communications.id NULLABLE
+status           VARCHAR NOT NULL  -- running, sent, partial, failed, skipped
+error_message    TEXT NULLABLE
+created_at       TIMESTAMP DEFAULT NOW()
+UNIQUE(schedule_id, scheduled_for)
+```
+
+### `announcements`
+```sql
+id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
+title       VARCHAR NOT NULL
+body        TEXT NOT NULL
+created_by  UUID FK users.id NULLABLE
+is_active   BOOLEAN DEFAULT TRUE
+publish_at  TIMESTAMP DEFAULT NOW()
+expires_at  TIMESTAMP NULLABLE
+created_at  TIMESTAMP DEFAULT NOW()
+updated_at  TIMESTAMP DEFAULT NOW()
 ```
 
 ### `pastoral_logs`

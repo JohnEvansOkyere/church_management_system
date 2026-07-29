@@ -10,7 +10,23 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.core.config import settings
 from app.db.database import Base
-from app.models import AttendanceRecord, AttendanceSession, Family, Member, User
+from app.models import (
+    AttendanceRecord,
+    AttendanceSession,
+    AuditLog,
+    Announcement,
+    Communication,
+    Event,
+    EventRegistration,
+    Family,
+    Group,
+    GroupMember,
+    Member,
+    ReminderRun,
+    ReminderSchedule,
+    PastoralLog,
+    User,
+)
 
 config = context.config
 
@@ -40,6 +56,7 @@ def run_migrations_online() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={"client_encoding": "utf8"},
     )
 
     with connectable.connect() as connection:

@@ -23,7 +23,7 @@ passlib[bcrypt]
 python-multipart
 cloudinary
 sendgrid
-africastalking
+httpx
 httpx
 pandas
 openpyxl

@@ -13,6 +13,7 @@ import MemberProfilePage from './pages/members/MemberProfilePage';
 import MemberRegistrationPage from './pages/members/MemberRegistrationPage';
 import MembersPage from './pages/members/MembersPage';
 import ReportsPage from './pages/reports/ReportsPage';
+import PastoralPage from './pages/pastoral/PastoralPage';
 import { authService } from './services/authService';
 import { useAuthStore } from './store/authStore';
 
@@ -90,6 +91,7 @@ export default function App() {
             <Route path="events" element={<EventsPage />} />
             <Route path="communication" element={<CommunicationPage />} />
             <Route path="reports" element={<ReportsPage />} />
+            <Route path="pastoral" element={<PastoralPage />} />
           </Route>
         </Routes>
       </AuthBootstrap>

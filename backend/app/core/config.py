@@ -18,8 +18,15 @@ class Settings(BaseSettings):
     SENDGRID_API_KEY: str = ""
     FROM_EMAIL: str = "noreply@livingsspring.org"
 
-    AFRICASTALKING_USERNAME: str = ""
-    AFRICASTALKING_API_KEY: str = ""
+    SMS_PROVIDER: str = "arkesel"
+
+    ARKESEL_API_KEY: str = ""
+    ARKESEL_SENDER_ID: str = "LivingSpring"
+    ARKESEL_BASE_URL: str = "https://sms.arkesel.com"
+
+    MOOLRE_VAS_KEY: str = ""
+    MOOLRE_SENDER_ID: str = "LivingSpring"
+    MOOLRE_BASE_URL: str = "https://api.moolre.com"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

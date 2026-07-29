@@ -7,6 +7,7 @@ from app.core.dependencies import get_current_user, require_roles
 from app.crud import attendance as attendance_crud
 from app.db.database import get_db
 from app.schemas.attendance import AttendanceMarkRequest, AttendanceRecordResponse, AttendanceSessionCreate, AttendanceSessionResponse
+from app.services.audit import record_audit
 
 router = APIRouter()
 
@@ -31,6 +32,8 @@ def create_session(
     current_user=Depends(require_roles("superadmin", "secretary")),
 ):
     session = attendance_crud.create_session(db, payload, created_by=current_user.id)
+    record_audit(db, user_id=current_user.id, action="created", table_name="attendance_sessions", record_id=session.id, new_value={"title": session.title, "session_date": session.session_date.isoformat()})
+    db.commit()
     data = AttendanceSessionResponse.model_validate(session).model_dump()
     return {"status": "success", "data": data}
 
@@ -63,6 +66,8 @@ def mark_attendance(
         raise HTTPException(status_code=404, detail="Attendance session not found")
 
     records = attendance_crud.mark_attendance(db, session_id, payload.records)
+    record_audit(db, user_id=current_user.id, action="marked", table_name="attendance_records", record_id=session_id, new_value={"record_count": len(records)})
+    db.commit()
     data = [AttendanceRecordResponse.model_validate(r).model_dump() for r in records]
     return {"status": "success", "data": data}
 

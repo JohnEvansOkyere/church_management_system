@@ -13,6 +13,7 @@ from app.crud import member as member_crud
 from app.db.database import get_db
 from app.schemas.donation import DonationResponse
 from app.schemas.member import MemberCreate, MemberResponse, MemberUpdate
+from app.services.audit import record_audit
 
 router = APIRouter()
 
@@ -60,6 +61,8 @@ def create_member(
         )
 
     member = member_crud.create_member(db, payload)
+    record_audit(db, user_id=current_user.id, action="created", table_name="members", record_id=member.id, new_value={"first_name": member.first_name, "last_name": member.last_name})
+    db.commit()
     low_map = member_crud.build_low_attendance_map(db, [member.id])
     row = MemberResponse.model_validate(member).model_dump()
     row["low_attendance"] = low_map.get(member.id, False)
@@ -149,6 +152,8 @@ def update_member(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
+    record_audit(db, user_id=current_user.id, action="updated", table_name="members", record_id=member.id, new_value=payload.model_dump(exclude_unset=True))
+    db.commit()
     low_map = member_crud.build_low_attendance_map(db, [member.id])
     row = MemberResponse.model_validate(member).model_dump()
     row["low_attendance"] = low_map.get(member.id, False)
@@ -164,6 +169,8 @@ def delete_member(
     deleted = member_crud.soft_delete_member(db, member_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Member not found")
+    record_audit(db, user_id=current_user.id, action="deactivated", table_name="members", record_id=member_id)
+    db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -194,6 +201,8 @@ def upload_member_photo(
 
     photo_url = f"/uploads/members/{safe_filename}"
     updated = member_crud.update_member(db, member_id, MemberUpdate(photo_url=photo_url))
+    record_audit(db, user_id=current_user.id, action="updated", table_name="members", record_id=member_id, new_value={"photo_url": photo_url})
+    db.commit()
     row = MemberResponse.model_validate(updated).model_dump()
     row["low_attendance"] = member_crud.build_low_attendance_map(db, [member_id]).get(member_id, False)
     return {"status": "success", "data": row}

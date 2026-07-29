@@ -33,3 +33,5 @@ class Member(Base):
 
     family = relationship("Family", back_populates="members")
     attendance_records = relationship("AttendanceRecord", back_populates="member")
+    group_memberships = relationship("GroupMember", back_populates="member", cascade="all, delete-orphan")
+    groups = relationship("Group", secondary="group_members", viewonly=True)

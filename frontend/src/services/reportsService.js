@@ -6,4 +6,6 @@ export const reportsService = {
   getDonationsMonthly: () => api.get('/reports/donations/monthly'),
   getExpensesMonthly: () => api.get('/reports/expenses/monthly'),
   getMembersGrowth: () => api.get('/reports/members/growth'),
+  exportMembers: () => api.get('/reports/export/members', { responseType: 'blob' }),
+  exportDonations: () => api.get('/reports/export/donations', { responseType: 'blob' }),
 };

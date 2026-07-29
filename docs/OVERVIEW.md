@@ -19,7 +19,7 @@ A web-based church management platform for managing members, attendance, finance
 | Auth | JWT (python-jose + passlib/bcrypt) |
 | File Storage | Cloudinary |
 | Email | SendGrid |
-| SMS | Africa's Talking |
+| SMS | Arkesel or Moolre REST API |
 | Frontend Hosting | Vercel |
 | Backend Hosting | Render |
 
@@ -49,6 +49,7 @@ church-cms/
 │   │   ├── models/                  # SQLAlchemy models (one file per module)
 │   │   ├── schemas/                 # Pydantic schemas (one file per module)
 │   │   ├── crud/                    # DB operations (one file per module)
+│   │   ├── services/                # External providers and background workflows
 │   │   └── db/
 │   │       └── database.py          # DB engine and session
 │   ├── alembic/                     # Migrations
@@ -85,8 +86,13 @@ CLOUDINARY_API_SECRET=
 SENDGRID_API_KEY=
 FROM_EMAIL=noreply@livingsspring.org
 
-AFRICASTALKING_USERNAME=
-AFRICASTALKING_API_KEY=
+SMS_PROVIDER=arkesel
+ARKESEL_API_KEY=
+ARKESEL_SENDER_ID=LivingSpring
+ARKESEL_BASE_URL=https://sms.arkesel.com
+MOOLRE_VAS_KEY=
+MOOLRE_SENDER_ID=LivingSpring
+MOOLRE_BASE_URL=https://api.moolre.com
 ```
 
 ### Frontend `.env.local`

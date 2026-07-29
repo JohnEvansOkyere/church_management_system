@@ -1,8 +1,10 @@
-from . import attendance, auth, communication, donations, events, groups, members, reports
+from . import attendance, audit, auth, communication, donations, events, groups, members, pastoral, reports
 
 __all__ = [
     "auth",
     "members",
+    "pastoral",
+    "audit",
     "attendance",
     "donations",
     "groups",

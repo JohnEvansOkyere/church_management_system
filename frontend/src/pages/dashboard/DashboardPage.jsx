@@ -3,7 +3,9 @@ import {
   ArrowRight,
   BarChart2,
   Banknote,
+  CalendarDays,
   CheckSquare,
+  MessageSquare,
   TrendingDown,
   TrendingUp,
   UserPlus,
@@ -145,6 +147,57 @@ export default function DashboardPage() {
           tone="warn"
           icon={TrendingDown}
         />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="panel p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="label-caps mb-1">Pastor’s Overview</p>
+              <h2 className="text-lg font-bold text-slate-900">Church activity at a glance</h2>
+            </div>
+            <Link to="/reports" className="btn-ghost">Full reports <ArrowRight size={14} /></Link>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {[
+              { label: 'Active Members', value: metrics.active_members ?? metrics.total_members ?? 0 },
+              { label: 'Departments', value: metrics.department_count ?? 0 },
+              { label: 'Open Follow-Ups', value: metrics.open_pastoral_followups ?? metrics.low_attendance_members ?? 0 },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs font-semibold text-slate-500">{item.label}</p>
+                <p className="mt-1 text-2xl font-extrabold text-slate-900">{item.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {(metrics.departments ?? []).slice(0, 6).map((department) => (
+              <div key={department.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2 text-sm">
+                <span className="truncate font-semibold text-slate-700">{department.name}</span>
+                <span className="ml-3 text-slate-500">{department.member_count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="panel p-6">
+          <p className="label-caps mb-1">Communications & Events</p>
+          <div className="mt-4 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-sm text-slate-600"><MessageSquare size={16} className="text-brand-700" /> SMS sent this month</span>
+              <span className="font-bold text-slate-900">{metrics.sms_sent_this_month ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-sm text-slate-600"><CalendarDays size={16} className="text-church-700" /> Upcoming events</span>
+              <span className="font-bold text-slate-900">{metrics.upcoming_events ?? 0}</span>
+            </div>
+            <div className="border-t border-slate-100 pt-3">
+              {(metrics.upcoming_event_list ?? []).slice(0, 3).map((event) => (
+                <div key={event.id} className="mb-2 text-sm"><p className="font-semibold text-slate-800">{event.title}</p><p className="text-xs text-slate-500">{new Date(event.start_datetime).toLocaleString('en-GH')}</p></div>
+              ))}
+              {!(metrics.upcoming_event_list ?? []).length && <p className="text-sm text-slate-500">No upcoming events scheduled.</p>}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Live snapshot + progress bars */}

@@ -1,4 +1,5 @@
 import { BarChart3, Download, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { useState } from 'react';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
@@ -11,6 +12,7 @@ import {
   useMembersGrowthReport,
 } from '../../hooks/useReports';
 import { formatCurrency } from '../../utils/formatters';
+import { reportsService } from '../../services/reportsService';
 
 function SummaryList({ title, items, formatter = (v) => v, emptyLabel }) {
   return (
@@ -38,6 +40,7 @@ export default function ReportsPage() {
   const incomeTrendQuery = useDonationsMonthlyReport();
   const expenseTrendQuery = useExpensesMonthlyReport();
   const membersTrendQuery = useMembersGrowthReport();
+  const [exporting, setExporting] = useState('');
 
   const isLoading =
     dashboardQuery.isLoading ||
@@ -58,6 +61,23 @@ export default function ReportsPage() {
 
   const netFlow = metrics.net_flow_this_month ?? 0;
 
+  async function downloadReport(type) {
+    setExporting(type);
+    try {
+      const response = await (type === 'members' ? reportsService.exportMembers() : reportsService.exportDonations());
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = type === 'members' ? 'members-report.csv' : 'finance-report.csv';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } finally {
+      setExporting('');
+    }
+  }
+
   return (
     <section className="space-y-5">
       <PageHeader
@@ -65,13 +85,13 @@ export default function ReportsPage() {
         subtitle="Review church performance across membership, attendance, income, and expenses."
         action={
           <div className="flex gap-2">
-            <button type="button" className="btn-outline">
+            <button type="button" className="btn-outline" onClick={() => downloadReport('members')} disabled={Boolean(exporting)}>
               <Download size={14} />
-              Members CSV
+              {exporting === 'members' ? 'Exporting…' : 'Members CSV'}
             </button>
-            <button type="button" className="btn-outline">
+            <button type="button" className="btn-outline" onClick={() => downloadReport('finance')} disabled={Boolean(exporting)}>
               <Download size={14} />
-              Finance Excel
+              {exporting === 'finance' ? 'Exporting…' : 'Finance CSV'}
             </button>
           </div>
         }

@@ -11,7 +11,6 @@ bcrypt==4.0.1
 python-multipart
 cloudinary
 sendgrid
-africastalking
 httpx
 pandas
 openpyxl

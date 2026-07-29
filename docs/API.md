@@ -135,7 +135,7 @@ GET    /donations/member/{id}/statement
 Current implementation uses `/donations` as the giving API. Product language and future design should treat this as the first part of the broader church `Finance` module.
 Funds may enforce member linkage. Example: `tithe` requires a member, while `offering` does not.
 
-### Groups
+### Departments
 ```
 GET    /groups
 POST   /groups
@@ -154,7 +154,7 @@ PUT    /events/{id}
 DELETE /events/{id}
 POST   /events/{id}/register
 GET    /events/{id}/registrations
-POST   /events/remind
+POST   /events/{id}/remind
 ```
 
 ### Communication
@@ -162,8 +162,23 @@ POST   /events/remind
 POST   /communication/sms
 POST   /communication/email
 GET    /communication/history
+GET    /communication/reminders
+POST   /communication/reminders
+PUT    /communication/reminders/{id}
+DELETE /communication/reminders/{id}
+POST   /communication/reminders/run-due
 POST   /communication/announcement
 GET    /communication/announcements
+PUT    /communication/announcements/{id}
+DELETE /communication/announcements/{id}
+```
+
+### Pastoral and Audit
+```
+GET    /pastoral
+POST   /pastoral
+PUT    /pastoral/{id}
+GET    /audit
 ```
 
 ### Reports

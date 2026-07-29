@@ -1,6 +1,8 @@
 import { Bell, ChevronRight, Menu } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { communicationService } from '../../services/communicationService';
 import { useAuthStore } from '../../store/authStore';
 
 const PAGE_NAMES = {
@@ -12,6 +14,7 @@ const PAGE_NAMES = {
   events: 'Events',
   communication: 'Communication',
   reports: 'Reports',
+  pastoral: 'Pastoral Care',
 };
 
 function getInitials(user) {
@@ -27,6 +30,12 @@ export default function Navbar({ onMenuClick }) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const announcementsQuery = useQuery({
+    queryKey: ['announcements'],
+    queryFn: () => communicationService.getAnnouncements().then((response) => response.data.data),
+    enabled: Boolean(user),
+  });
 
   const segments = location.pathname.replace(/^\//, '').split('/').filter(Boolean);
   const rootSegment = segments[0] || 'dashboard';
@@ -67,13 +76,26 @@ export default function Navbar({ onMenuClick }) {
       <div className="flex items-center gap-2">
         <span className="hidden text-xs text-slate-400 md:block">{today}</span>
 
-        <button
-          type="button"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setAnnouncementsOpen((previous) => !previous)}
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+            aria-label="Announcements"
+          >
+            <Bell size={18} />
+            {(announcementsQuery.data?.length || 0) > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent-700" />}
+          </button>
+          {announcementsOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setAnnouncementsOpen(false)} />
+              <div className="absolute right-0 top-11 z-20 w-[min(22rem,calc(100vw-2rem))] rounded-2xl bg-white p-4 shadow-lg ring-1 ring-slate-200">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3"><p className="font-semibold text-slate-900">Announcements</p><span className="text-xs text-slate-400">{announcementsQuery.data?.length || 0}</span></div>
+                <div className="max-h-80 space-y-3 overflow-y-auto pt-3">{announcementsQuery.data?.map((announcement) => <article key={announcement.id} className="rounded-xl bg-slate-50 p-3"><p className="text-sm font-semibold text-slate-900">{announcement.title}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-600">{announcement.body}</p></article>)}{!announcementsQuery.data?.length && <p className="py-5 text-center text-sm text-slate-500">No active announcements.</p>}</div>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Avatar dropdown */}
         <div className="relative">

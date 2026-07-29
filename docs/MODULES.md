@@ -92,7 +92,7 @@ The finance domain should cover both **giving** and **church financial operation
 
 ---
 
-## Module 4: Groups & Ministries
+## Module 4: Departments & Ministries
 
 **Backend route prefix:** `/api/v1/groups`
 
@@ -100,17 +100,19 @@ The finance domain should cover both **giving** and **church financial operation
 | Method | Path | Role Required | Description |
 |---|---|---|---|
 | GET | / | any | List all groups |
-| POST | / | superadmin, secretary | Create group |
-| PUT | /{id} | superadmin, secretary | Update group |
-| DELETE | /{id} | superadmin | Delete group |
-| GET | /{id}/members | any | List members in group |
-| POST | /{id}/members | superadmin, secretary, group_leader | Add member to group |
+| POST | / | superadmin, secretary | Create department |
+| PUT | /{id} | superadmin, secretary | Update department |
+| DELETE | /{id} | superadmin | Deactivate department |
+| GET | /{id}/members | any | List members in department |
+| POST | /{id}/members | superadmin, secretary, group_leader | Add member |
 | DELETE | /{id}/members/{member_id} | superadmin, secretary, group_leader | Remove member |
 
 ### Key Business Logic
-- Group leaders can only manage their own group
-- A member can belong to multiple groups
-- Show member count per group on the groups list page
+- A department is one complete ministry/team; there are no units underneath it
+- Department leaders can only manage their own department
+- A member can belong to multiple departments
+- Show active member count per department on the departments list page
+- Seed the ten Living Spring departments from the approved departmental list
 
 ---
 
@@ -146,26 +148,33 @@ The finance domain should cover both **giving** and **church financial operation
 | POST | /sms | superadmin, secretary | Send bulk SMS |
 | POST | /email | superadmin, secretary | Send bulk email |
 | GET | /history | superadmin, secretary | View all sent communications |
+| GET | /reminders | any | List recurring SMS reminders |
+| POST | /reminders | superadmin, secretary, group_leader | Create weekly SMS reminder |
+| PUT | /reminders/{id} | superadmin, secretary, group_leader | Update reminder |
+| DELETE | /reminders/{id} | superadmin, secretary, group_leader | Pause reminder |
+| POST | /reminders/run-due | superadmin, secretary | Process due reminders |
 | POST | /announcement | superadmin, secretary | Post announcement (in-app) |
 | GET | /announcements | any | List active announcements |
+| PUT | /announcements/{id} | superadmin, secretary | Edit announcement |
+| DELETE | /announcements/{id} | superadmin, secretary | Archive announcement |
 
 ### Key Business Logic
-- SMS via Africa's Talking API (Ghana numbers)
+- SMS via the configured Arkesel or Moolre REST API (Ghana providers)
 - Email via SendGrid
-- Support sending to: all members, specific group, or selected member IDs
+- Support sending to: all active members, a specific department, or selected member IDs
 - Log every sent communication with timestamp, sender, and recipient count
+- Weekly reminders use the Africa/Accra timezone and are idempotent per scheduled run
+- The reminder runner should be invoked by a platform cron every 5–15 minutes; it must not depend on a browser being open
+- Active announcements appear in the application notification bell and can be archived by administrators
 
-### Africa's Talking SMS Example
+### SMS Provider Configuration
 ```python
-import africastalking
-
-africastalking.initialize(username=settings.AT_USERNAME, api_key=settings.AT_API_KEY)
-sms = africastalking.SMS
-
-def send_sms(phone_numbers: list, message: str):
-    response = sms.send(message, phone_numbers)
-    return response
+SMS_PROVIDER=arkesel  # or moolre
 ```
+
+Set credentials for the selected provider in the backend environment. The
+application keeps one SMS history and reminder workflow regardless of which
+provider is active.
 
 ---
 
