@@ -1,6 +1,7 @@
 import { BarChart3, Download, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import { useState } from 'react';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import IncomeExpenseLineChart from '../../components/shared/IncomeExpenseLineChart';
 import PageHeader from '../../components/shared/PageHeader';
 import StatCard from '../../components/shared/StatCard';
 import TrendBars from '../../components/shared/TrendBars';
@@ -148,10 +149,7 @@ export default function ReportsPage() {
         <TrendBars title="Monthly Attendance" data={attendanceTrend} color="bg-brand-700" />
         <TrendBars title="Member Growth" data={membersTrend} color="bg-success-700" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <TrendBars title="Monthly Income" data={incomeTrend} color="bg-church-700" />
-        <TrendBars title="Monthly Expenses" data={expenseTrend} color="bg-accent-700" />
-      </div>
+      <IncomeExpenseLineChart incomeData={incomeTrend} expenseData={expenseTrend} />
 
       {/* Trend tables */}
       <div className="grid gap-4 xl:grid-cols-3">
