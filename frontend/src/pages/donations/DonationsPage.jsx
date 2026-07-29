@@ -1,6 +1,6 @@
 import { Banknote, CheckCircle2, FolderOpen, Receipt, TrendingDown, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import DataTable from '../../components/shared/DataTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import StatCard from '../../components/shared/StatCard';
@@ -12,6 +12,7 @@ import {
   useCreateExpense,
   useCreateExpenseCategory,
   useCreateFinanceBatch,
+  useCloseFinanceBatch,
   useDonationAnnualReport,
   useDonationFunds,
   useDonations,
@@ -94,8 +95,9 @@ function BreakdownList({ items, loading, emptyLabel }) {
 }
 
 export default function DonationsPage({ view = 'overview' }) {
+  const [searchParams] = useSearchParams();
   const [activeAction, setActiveAction] = useState('collection');
-  const [selectedBatchId, setSelectedBatchId] = useState('');
+  const [selectedBatchId, setSelectedBatchId] = useState(() => searchParams.get('batch_id') || '');
   const [message, setMessage] = useState('');
   const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState({ start_date: '', end_date: '', fund_id: '', category_id: '' });
@@ -117,6 +119,7 @@ export default function DonationsPage({ view = 'overview' }) {
 
   const createDonationMutation = useCreateDonation();
   const createBatchMutation = useCreateFinanceBatch();
+  const closeBatchMutation = useCloseFinanceBatch();
   const createExpenseMutation = useCreateExpense();
   const createFundMutation = useCreateDonationFund();
   const createExpenseCategoryMutation = useCreateExpenseCategory();
@@ -125,6 +128,7 @@ export default function DonationsPage({ view = 'overview' }) {
 
   const funds = fundsQuery.data?.data ?? [];
   const batches = batchesQuery.data?.data ?? [];
+  const openBatches = batches.filter((batch) => !batch.is_closed);
   const members = membersQuery.data?.data ?? [];
   const donationRows = donationsQuery.data?.data ?? [];
   const expenseRows = expensesQuery.data?.data ?? [];
@@ -155,7 +159,7 @@ export default function DonationsPage({ view = 'overview' }) {
   const todayChecklist = [
     { label: 'Standard church funds loaded', done: setupReady.fundsLoaded, icon: Banknote },
     { label: 'Expense categories ready', done: setupReady.categoriesLoaded, icon: Receipt },
-    { label: 'Collection batch open', done: Boolean(activeBatch), icon: FolderOpen },
+    { label: 'Service collection open', done: Boolean(activeBatch), icon: FolderOpen },
   ];
 
   const presetFilters = [
@@ -196,13 +200,20 @@ export default function DonationsPage({ view = 'overview' }) {
     const batchId = response.data.data.id;
     setSelectedBatchId(batchId);
     setDonationForm((prev) => ({ ...prev, batch_id: batchId, donation_date: batchForm.service_date }));
-    setMessage('Collection batch opened.');
+    setMessage('Service collection opened. Next, record the giving against it.');
+  }
+
+  async function onCloseBatch(batch) {
+    const confirmed = window.confirm(`Close “${batch.title}”? Confirm that the recorded total has been counted and checked.`);
+    if (!confirmed) return;
+    await closeBatchMutation.mutateAsync(batch.id);
+    setMessage(`“${batch.title}” is closed. New entries can no longer be added to it.`);
   }
 
   async function onCreateDonation(event) {
     event.preventDefault();
     setMessage('');
-    await createDonationMutation.mutateAsync({ ...donationForm, member_id: donationForm.member_id || null, batch_id: donationForm.batch_id || null, amount: Number(donationForm.amount), payment_method: donationForm.payment_method || null, reference: donationForm.reference || null, notes: donationForm.notes || null });
+    await createDonationMutation.mutateAsync({ ...donationForm, member_id: donationForm.member_id || null, batch_id: donationForm.batch_id || selectedBatchId || null, amount: Number(donationForm.amount), payment_method: donationForm.payment_method || null, reference: donationForm.reference || null, notes: donationForm.notes || null });
     const label = selectedAction === 'tithe'
       ? `Saved ${formatCurrency(donationForm.amount || 0)} as tithe.`
       : `Saved ${formatCurrency(donationForm.amount || 0)} as ${selectedCollectionFund?.name || 'church collection'}.`;
@@ -271,12 +282,24 @@ export default function DonationsPage({ view = 'overview' }) {
   ];
 
   const batchColumns = [
-    { key: 'title', label: 'Batch' },
+    { key: 'title', label: 'Collection' },
     { key: 'service_date', label: 'Service Date', render: (row) => formatDate(row.service_date) },
     { key: 'service_type', label: 'Service Type' },
     { key: 'total_amount', label: 'Collected', render: (row) => formatCurrency(row.total_amount ?? 0) },
     { key: 'transaction_count', label: 'Entries' },
-    { key: 'is_closed', label: 'Status', render: (row) => row.is_closed ? 'Closed' : 'Open' },
+    { key: 'is_closed', label: 'Status', render: (row) => row.is_closed ? <span className="font-semibold text-slate-500">Closed</span> : <span className="font-semibold text-success-700">Open</span> },
+    {
+      key: 'actions',
+      label: 'Next step',
+      render: (row) => row.is_closed ? (
+        <span className="text-xs text-slate-400">Reconciled</span>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Link to={`/finance/giving?batch_id=${row.id}`} className="text-xs font-bold text-brand-700 hover:text-brand-900">Record giving</Link>
+          <button type="button" onClick={() => onCloseBatch(row)} disabled={closeBatchMutation.isPending} className="text-xs font-bold text-accent-700 hover:text-accent-900 disabled:opacity-50">Close</button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -348,8 +371,8 @@ export default function DonationsPage({ view = 'overview' }) {
           </Link>
           <Link to="/finance/batches" className="panel p-5 transition hover:ring-2 hover:ring-brand-200">
             <p className="text-sm font-bold text-slate-900">Manage service collections</p>
-            <p className="mt-1 text-sm text-slate-500">Open collection batches so Sunday and event giving can be reconciled.</p>
-            <p className="mt-4 text-xs font-bold text-brand-700">Open batches →</p>
+            <p className="mt-1 text-sm text-slate-500">Open a service collection, record the giving, and close it after the count is checked.</p>
+            <p className="mt-4 text-xs font-bold text-brand-700">Open collections →</p>
           </Link>
         </div>
       )}
@@ -387,10 +410,10 @@ export default function DonationsPage({ view = 'overview' }) {
               <form onSubmit={onCreateDonation} className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Collection Batch (optional)</label>
-                    <select className="field" value={donationForm.batch_id} onChange={(e) => { const batchId = e.target.value; const batch = batches.find((b) => b.id === batchId); setSelectedBatchId(batchId); setDonationForm((prev) => ({ ...prev, batch_id: batchId, donation_date: batch?.service_date || prev.donation_date })); }}>
-                      <option value="">No batch / Direct entry</option>
-                      {batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.title} — {formatDate(batch.service_date)}</option>)}
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Service Collection (recommended)</label>
+                    <select className="field" value={donationForm.batch_id || selectedBatchId} onChange={(e) => { const batchId = e.target.value; const batch = openBatches.find((b) => b.id === batchId); setSelectedBatchId(batchId); setDonationForm((prev) => ({ ...prev, batch_id: batchId, donation_date: batch?.service_date || prev.donation_date })); }}>
+                      <option value="">No collection / Direct entry</option>
+                      {openBatches.map((batch) => <option key={batch.id} value={batch.id}>{batch.title} — {formatDate(batch.service_date)}</option>)}
                     </select>
                   </div>
                   <div>
@@ -423,9 +446,9 @@ export default function DonationsPage({ view = 'overview' }) {
                     <input className="field" placeholder="Any additional notes" value={donationForm.notes} onChange={(e) => setDonationForm((prev) => ({ ...prev, notes: e.target.value }))} />
                   </div>
                 </div>
-                <button type="submit" className="btn-primary" disabled={createDonationMutation.isPending}>
+                <button type="submit" className="btn-primary" disabled={createDonationMutation.isPending || Boolean(activeBatch?.is_closed)}>
                   <Banknote size={15} />
-                  {createDonationMutation.isPending ? 'Saving…' : 'Save Collection'}
+                  {createDonationMutation.isPending ? 'Saving…' : 'Save Collection Entry'}
                 </button>
               </form>
             </>
@@ -449,10 +472,10 @@ export default function DonationsPage({ view = 'overview' }) {
                     <input className="field bg-slate-50 text-slate-500" value={titheFund?.name || 'Tithe fund not loaded yet'} disabled />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Batch (optional)</label>
-                    <select className="field" value={donationForm.batch_id} onChange={(e) => { const batchId = e.target.value; const batch = batches.find((b) => b.id === batchId); setSelectedBatchId(batchId); setDonationForm((prev) => ({ ...prev, batch_id: batchId, donation_date: batch?.service_date || prev.donation_date, fund_id: titheFund?.id || prev.fund_id })); }}>
-                      <option value="">No batch</option>
-                      {batches.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Service Collection (optional)</label>
+                    <select className="field" value={donationForm.batch_id || selectedBatchId} onChange={(e) => { const batchId = e.target.value; const batch = openBatches.find((b) => b.id === batchId); setSelectedBatchId(batchId); setDonationForm((prev) => ({ ...prev, batch_id: batchId, donation_date: batch?.service_date || prev.donation_date, fund_id: titheFund?.id || prev.fund_id })); }}>
+                      <option value="">No collection</option>
+                      {openBatches.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
                     </select>
                   </div>
                   <div>
@@ -478,7 +501,7 @@ export default function DonationsPage({ view = 'overview' }) {
                     <input className="field" value={donationForm.notes} onChange={(e) => setDonationForm((prev) => ({ ...prev, notes: e.target.value, fund_id: titheFund?.id || prev.fund_id }))} />
                   </div>
                 </div>
-                <button type="submit" className="btn-primary" disabled={createDonationMutation.isPending || !titheFund}>
+                <button type="submit" className="btn-primary" disabled={createDonationMutation.isPending || !titheFund || Boolean(activeBatch?.is_closed)}>
                   <TrendingUp size={15} />
                   {createDonationMutation.isPending ? 'Saving…' : 'Save Member Tithe'}
                 </button>
@@ -538,19 +561,20 @@ export default function DonationsPage({ view = 'overview' }) {
 
         {/* Right — status sidebar */}
         {isGiving && <div className="space-y-4">
-          {/* Active batch card */}
+          {/* Selected service collection card */}
           <div className="panel p-5">
-            <SectionLabel>Active Batch</SectionLabel>
+            <SectionLabel>Selected Service Collection</SectionLabel>
             <div className={`rounded-2xl p-4 ${activeBatch ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-slate-50'}`}>
-              <p className="text-sm font-bold text-slate-900">{activeBatch ? activeBatch.title : 'No batch selected'}</p>
+              <p className="text-sm font-bold text-slate-900">{activeBatch ? activeBatch.title : 'No collection selected'}</p>
               <p className="mt-1 text-xs text-slate-500">
-                {activeBatch ? `${formatDate(activeBatch.service_date)} · ${activeBatch.service_type}` : 'Open a batch to group collection entries.'}
+                {activeBatch ? `${formatDate(activeBatch.service_date)} · ${activeBatch.service_type}${activeBatch.is_closed ? ' · Closed' : ''}` : 'Choose an open service collection to group these entries.'}
               </p>
+              {activeBatch?.is_closed && <p className="mt-2 text-xs font-semibold text-accent-700">This collection is closed. Select an open collection before saving a new entry.</p>}
             </div>
             {activeBatch && (
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">Batch Total</p>
+                  <p className="text-xs text-slate-500">Collection Total</p>
                   <p className="mt-1 text-xl font-bold text-slate-900">{formatCurrency(activeBatch?.total_amount ?? 0)}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-3">
@@ -661,24 +685,29 @@ export default function DonationsPage({ view = 'overview' }) {
       {isBatches && (
         <div className="space-y-5">
           <div className="panel p-5">
-            <SectionLabel>Open collection batch</SectionLabel>
-            <p className="mb-4 text-sm text-slate-500">Create one batch for a service or event so the finance team can reconcile the collection.</p>
+            <SectionLabel>Step 1 — Open a service collection</SectionLabel>
+            <p className="mb-4 text-sm text-slate-500">Create one collection for each service or event. You will attach giving entries to it, review the total, and close it when the count is confirmed.</p>
             <form onSubmit={onCreateBatch} className="grid gap-3 md:grid-cols-2">
-              <input className="field" value={batchForm.title} onChange={(e) => setBatchForm((p) => ({ ...p, title: e.target.value }))} placeholder="Batch title" required />
+              <input className="field" value={batchForm.title} onChange={(e) => setBatchForm((p) => ({ ...p, title: e.target.value }))} placeholder="Collection name" required />
               <input className="field" type="date" value={batchForm.service_date} onChange={(e) => setBatchForm((p) => ({ ...p, service_date: e.target.value }))} required />
               <select className="field" value={batchForm.service_type} onChange={(e) => setBatchForm((p) => ({ ...p, service_type: e.target.value }))}>
                 {ATTENDANCE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <input className="field" value={batchForm.notes} onChange={(e) => setBatchForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Notes (optional)" />
-              <button type="submit" className="btn-primary md:col-span-2 md:w-fit">{createBatchMutation.isPending ? 'Opening…' : 'Open Batch'}</button>
+              <button type="submit" className="btn-primary md:col-span-2 md:w-fit">{createBatchMutation.isPending ? 'Opening…' : 'Open Service Collection'}</button>
             </form>
+            {selectedBatchId && (
+              <Link to={`/finance/giving?batch_id=${selectedBatchId}`} className="mt-4 inline-flex text-sm font-bold text-brand-700 hover:text-brand-900">
+                Record giving for this collection →
+              </Link>
+            )}
           </div>
           <div className="panel p-5">
             <div className="mb-4">
-              <p className="text-base font-bold text-slate-900">Collection batches</p>
-              <p className="mt-1 text-sm text-slate-500">Service-day envelopes and their recorded totals.</p>
+              <p className="text-base font-bold text-slate-900">Service collections</p>
+              <p className="mt-1 text-sm text-slate-500">Step 2: record giving. Step 3: close each collection after the total is checked.</p>
             </div>
-            {batchesQuery.isLoading ? <LoadingSpinner label="Loading batches…" /> : <DataTable columns={batchColumns} rows={batches} emptyLabel="No collection batches yet" />}
+            {batchesQuery.isLoading ? <LoadingSpinner label="Loading service collections…" /> : <DataTable columns={batchColumns} rows={batches} emptyLabel="No service collections yet" />}
           </div>
         </div>
       )}

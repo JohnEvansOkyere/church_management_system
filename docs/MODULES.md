@@ -56,7 +56,7 @@ Each module has a backend router, CRUD file, model, schema, and a frontend page 
 
 ## Module 3: Finance
 
-The finance domain should cover both **giving** and **church financial operations**. In a typical church management system, finance is broader than simple donation logging. It should support tithe, offering, harvest, welfare, missions, special seeds, campaigns, statements, batches, and finance reporting in one place.
+The finance domain should cover both **giving** and **church financial operations**. In a typical church management system, finance is broader than simple donation logging. It should support tithe, offering, harvest, welfare, missions, special seeds, campaigns, statements, service collections, and finance reporting in one place.
 
 **Backend route prefix:** `/api/v1/donations`
 
@@ -68,8 +68,9 @@ The finance domain should cover both **giving** and **church financial operation
 | GET | /{id} | superadmin, finance | Get giving transaction details |
 | GET | /member/{id} | any (own) superadmin, finance (others) | Member giving history |
 | GET | /funds | any | List all church funds and giving categories |
-| GET | /batches | superadmin, finance | List finance service/event batches |
-| POST | /batches | superadmin, finance | Create finance batch for a service or event |
+| GET | /batches | superadmin, finance | List service collections |
+| POST | /batches | superadmin, finance | Open a service collection for a service or event |
+| POST | /batches/{id}/close | superadmin, finance | Close a reviewed service collection |
 | POST | /funds | superadmin | Create church fund |
 | POST | /funds/bootstrap | superadmin | Load standard church finance funds |
 | GET | /expense-categories | any | List finance expense categories |
@@ -87,7 +88,7 @@ The finance domain should cover both **giving** and **church financial operation
 - Total giving dashboard: sum by fund, sum by month, sum by payment method
 - Finance should also capture expense categories, expense ledger, and monthly cash outflow
 - Generate giving statements per member and optionally per family household
-- Support service-day batching so finance can reconcile all collections from a particular service or event
+- Support service collections so finance can reconcile all giving from a particular service or event; closed collections reject new entries
 - Support pledge/campaign tracking for harvest, building project, missions drive, and similar church campaigns
 - Support deposits and reconciliation flow between giving records and church cash/bank balances
 - Support online giving webhook endpoint for Paystack/Flutterwave integration (future)

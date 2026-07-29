@@ -6,7 +6,7 @@ const financeSections = [
   { to: '/finance', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/finance/giving', label: 'Giving', icon: Banknote },
   { to: '/finance/expenses', label: 'Expenses', icon: Receipt },
-  { to: '/finance/batches', label: 'Batches', icon: ClipboardList },
+  { to: '/finance/batches', label: 'Service Collections', icon: ClipboardList },
   { to: '/finance/funds', label: 'Funds & Categories', icon: Settings2 },
   { to: '/finance/reports', label: 'Reports', icon: BarChart3 },
 ];

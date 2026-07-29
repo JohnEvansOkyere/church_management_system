@@ -132,6 +132,28 @@ def create_batch(
     return {"status": "success", "data": data}
 
 
+@router.post("/batches/{batch_id}/close")
+def close_batch(
+    batch_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("superadmin", "finance")),
+):
+    try:
+        row = donation_crud.close_batch(db, batch_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    record_audit(
+        db,
+        user_id=current_user.id,
+        action="closed",
+        table_name="finance_batches",
+        record_id=row.id,
+        new_value={"title": row.title, "is_closed": True},
+    )
+    db.commit()
+    return {"status": "success", "data": FinanceBatchResponse.model_validate(row).model_dump()}
+
+
 @router.get("/member/{member_id}")
 def get_member_history(
     member_id: UUID,

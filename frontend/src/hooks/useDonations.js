@@ -122,6 +122,19 @@ export function useCreateFinanceBatch() {
 }
 
 
+export function useCloseFinanceBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (batchId) => donationsService.closeBatch(batchId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['donations'] });
+    },
+  });
+}
+
+
 export function useCreateExpense() {
   const queryClient = useQueryClient();
 

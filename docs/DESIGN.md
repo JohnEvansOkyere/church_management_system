@@ -727,7 +727,7 @@ TABLE VIEW:
 
 **Tab Navigation (full width horizontal tabs):**
 ```
-[Giving]  [Expenses]  [Batches]  [Funds]  [Reports]
+[Giving]  [Expenses]  [Service Collections]  [Funds]  [Reports]
 ```
 
 **Tab: Giving**
@@ -749,10 +749,10 @@ Table: Date | Category | Description | Amount | Recorded by
 Stat row: [Total Expenses MTD] [Top Category]
 ```
 
-**Tab: Batches**
+**Tab: Service Collections**
 ```
 Header: [New Batch +]
-A batch = one service day's collection envelope
+A service collection = one service day's collection envelope
 Each row: Batch name | Date | Service type | Total collected | Status
 Click to expand: shows all giving records in that batch
 ```

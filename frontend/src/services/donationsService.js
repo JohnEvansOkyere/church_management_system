@@ -8,6 +8,7 @@ export const donationsService = {
   createFund: (payload) => api.post('/donations/funds', payload),
   getBatches: (params) => api.get('/donations/batches', { params }),
   createBatch: (payload) => api.post('/donations/batches', payload),
+  closeBatch: (id) => api.post(`/donations/batches/${id}/close`),
   getSummary: (params) => api.get('/donations/summary', { params }),
   exportSummary: (params) => api.get('/donations/export/summary', { params, responseType: 'blob' }),
   getExpenses: (params) => api.get('/donations/expenses', { params }),

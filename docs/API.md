@@ -126,6 +126,7 @@ GET    /donations/{id}
 GET    /donations/member/{id}
 GET    /donations/batches
 POST   /donations/batches
+POST   /donations/batches/{id}/close
 GET    /donations/funds
 POST   /donations/funds
 POST   /donations/funds/bootstrap
@@ -141,6 +142,7 @@ GET    /donations/member/{id}/statement
 
 Current implementation uses `/donations` as the giving API. Product language and future design should treat this as the first part of the broader church `Finance` module.
 Funds may enforce member linkage. Example: `tithe` requires a member, while `offering` does not.
+The UI calls finance batches **Service Collections**. A collection is opened for one service or event, giving entries are attached to it, and an authorised finance user closes it after reviewing the total. Closed collections reject new giving entries.
 
 ### Departments
 ```

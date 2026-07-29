@@ -78,6 +78,12 @@ def create_donation(db: Session, payload: DonationCreate, recorded_by: UUID | No
         raise ValueError("Selected finance fund does not exist")
     if fund.requires_member and not payload.member_id:
         raise ValueError(f"{fund.name} entries must be linked to a member")
+    if payload.batch_id:
+        batch = db.query(FinanceBatch).filter(FinanceBatch.id == payload.batch_id).first()
+        if not batch:
+            raise ValueError("Selected service collection does not exist")
+        if batch.is_closed:
+            raise ValueError("This service collection is closed and cannot accept new entries")
 
     donation = Donation(**payload.model_dump(), recorded_by=recorded_by)
     db.add(donation)
@@ -162,6 +168,18 @@ def list_batches(db: Session, include_closed: bool = True) -> list[dict]:
 def create_batch(db: Session, payload: FinanceBatchCreate, recorded_by: UUID | None) -> FinanceBatch:
     batch = FinanceBatch(**payload.model_dump(), recorded_by=recorded_by)
     db.add(batch)
+    db.commit()
+    db.refresh(batch)
+    return batch
+
+
+def close_batch(db: Session, batch_id: UUID) -> FinanceBatch:
+    batch = db.query(FinanceBatch).filter(FinanceBatch.id == batch_id).first()
+    if not batch:
+        raise ValueError("Selected service collection does not exist")
+    if batch.is_closed:
+        return batch
+    batch.is_closed = True
     db.commit()
     db.refresh(batch)
     return batch
